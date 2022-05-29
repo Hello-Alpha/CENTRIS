@@ -13,13 +13,3 @@ Invalid package''表示包不存在或请求错误，不会重试。
 ## 注意事项
 不能Ctrl-C中断，只能直接关掉命令行窗口或kill(QAQ).
 
-Windows:
-推荐使用python virtual environment(不用问题也不大)
-```bash
-pip install virtualenv
-python -m venv env
-env\Scripts\activate.ps1
-```
-之后就建立好虚拟环境了~
-删除venv只要删掉env文件夹就好了~
-
