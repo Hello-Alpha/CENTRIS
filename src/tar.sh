@@ -1,5 +1,4 @@
 #!/bin/bash
-#!/bin/bash
 #目录格式为
 # src
 #     lxml
@@ -18,15 +17,15 @@ do
     if [ -d $i ]; then
     cd $i
     echo $i
-    ls *.tar.gz > ls_gz.log
+    ls *.tar.gz 1>ls_gz.log 2>tar_error.log
     for k in $(cat ls_gz.log)   
     do
         tar -zxf $k & > /dev/null   
         rm $k
     done
-    rm ls_gz.log
+    # rm ls_gz.log
     cd ..
     fi
 done  
-rm dir.log
+# rm dir.log
 
