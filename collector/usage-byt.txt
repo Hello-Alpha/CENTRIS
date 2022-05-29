@@ -1,0 +1,12 @@
+使用方法: pip install .
+python $(which sync_package_cache) <config>
+结果放在./cache中.
+
+不能Ctrl-C中断，只能直接关掉命令行窗口QAQ.
+
+Windows:
+推荐使用python virtual environment(不用问题也不大)
+pip install virtualenv
+python -m venv env
+env\Scripts\activate.ps1
+删除venv只要删掉env文件夹就好了~

@@ -1,0 +1,7 @@
+[settings]
+  cache_folder: ./cache
+  packagetypes: sdist
+  python: py3
+
+[packages]
+   dodgem
