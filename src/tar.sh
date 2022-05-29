@@ -22,6 +22,7 @@ do
     for k in $(cat ls_gz.log)   
     do
         tar -zxf $k & > /dev/null   
+        rm $k
     done
     rm ls_gz.log
     cd ..
