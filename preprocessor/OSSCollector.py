@@ -26,8 +26,7 @@ class TXTProcess():
         stringio = io.StringIO(func_str)
         for toktype, tok, start, end, line in tokenize.generate_tokens(stringio.readline):
             if toktype == tokenize.COMMENT:
-                new_lines[start[0]-1] = new_lines[start[0]
-                                                  ][:start[1]] + new_lines[start[0]-1][end[1]:]
+                new_lines[start[0]-1] = new_lines[start[0]-1][:start[1]] + new_lines[start[0]-1][end[1]:]
         return "".join(new_lines)
 
     def remov_blank(self, func_str):
@@ -52,10 +51,7 @@ def get_func(node, funclist):
             get_func(sub_node, funclist)
 
 
-def parse(file_list):
-    func_dict = {}
-    func_num = 0
-
+def parse(func_dict, version_id, file_list):
     for file in file_list:
         f = open(file, "r", encoding="utf-8")
 
@@ -91,46 +87,67 @@ def parse(file_list):
             elif TLSH == "TNULL" or TLSH == "" or TLSH == "NULL":
                 continue
 
-            # func_dict字典：{“funcHash”: (文件路径, 函数名)}
+            # func_dict字典：{“funcHash”: {函数名, 版本id}}}, 可能存在哈希碰撞
             if TLSH not in func_dict:
-                func_dict[TLSH] = []
-            func_dict[TLSH].append((file, func.name))
+                func_dict[TLSH] = {func.name: str(version_id)}
+            else:
+                if func.name in func_dict[TLSH]:
+                    if str(version_id) not in func_dict[TLSH][func.name].split(' '):    # 防止出现重复
+                        func_dict[TLSH][func.name] += ' ' + str(version_id)
+                else:
+                    # 哈希碰撞
+                    func_dict[TLSH][func.name] = str(version_id)
 
-            # 更新记录
-            func_num += 1
-
-    return func_dict, func_num
+    return func_dict
 
 
 def Analyze(db, cursor):
     # 读取所有repo
-    cursor.execute("""select repo_name, repo_path, version, repo_date 
-                    from repo""")
+    cursor.execute("""select repo_name, version, version_id, repo_date 
+                    from repo
+                    order by repo_name, version_id""")
     repo_list = cursor.fetchall()
     total_func_num = 0
-    with tqdm(total=len(repo_list)) as pbar:
+    cur_repo_name = ''
+    func_dict = {}
+    with tqdm(total=len(repo_list), smoothing=0.0) as pbar:
         for idx, repo in enumerate(repo_list):
-            # 分析一个工程
-            file_list = get_file(repo[1])  # 获取py文件列表
-            func_dict, func_num = parse(file_list)  # 分析该项目中的所有文件
+            if cur_repo_name != repo[0]:
+                cur_repo_name = repo[0]
+                total_func_num += len(func_dict)
 
-            for hashval, functions in func_dict.items():
+                # 将函数插入数据库
                 try:
-                    for func in functions:
-                        # 执行sql语句
-                        cursor.execute("""insert into func(
-                                func_name, hash_val, repo_name, version, file_path, func_weight)
-                                VALUES ('%s', '%s', '%s', '%s', '%s', 0.0)""" % (func[1], hashval, repo[0], repo[2], func[0]))
-                        # 提交到数据库执行
-                        db.commit()
+                    for hashval, functions in func_dict.items():
+                        for func_name, version_ids in functions.items():
+                            # 执行sql语句
+                            cursor.execute("""insert into func (repo_name, version_ids, func_name, hash_val, func_weight)
+                                    VALUES ('%s', '%s', '%s', '%s', 0.0)""" % (repo[0], version_ids, func_name, hashval))
+                            # 提交到数据库执行
+                            db.commit()
                 except:
                     traceback.print_exc()
+                    print("version_ids = %s" % version_ids)
+                    print("func_name = %s" % func_name)
                     # 如果发生错误则回滚
                     db.rollback()
-            total_func_num += func_num
+
+                func_dict.clear()
+
+            repo_path = "%s\\%s\\%s-%s" % (args.src_path, repo[0], repo[0], repo[1])
+            # 分析一个工程
+            file_list = get_file(repo_path)  # 获取py文件列表
+
+            try:
+                func_dict = parse(func_dict, repo[2], file_list)  # 分析该项目中的所有文件
+            except:
+                traceback.print_exc()
+
             pbar.set_postfix(
-                {"cur_repo": repo[0], "cur_func_num": func_num, "total_func_num": total_func_num})
+                {"repo_name": repo[0], "version": repo[1], "cur_func_num": len(func_dict), "total_func_num": total_func_num})
             pbar.update()
+
+
 
 
 def initDatabase(initTable=False):
@@ -157,17 +174,19 @@ def initDatabase(initTable=False):
         # 建立表
         cursor.execute("""create table repo (
                         repo_name CHAR(50),
-                        repo_path CHAR(100),
-                        version CHAR(20),
-                        repo_date DATE);""")
+                        version VARCHAR(40),
+                        version_id INT,
+                        repo_date DATETIME);""")
+        # version_id从1开始
+        # repo_path = "%s\\%s\\%s-%s" % (args.src_path, repo_name, repo_name, version)
 
         cursor.execute("""create table func (
-                        func_name CHAR(50),
-                        hash_val CHAR(100),
                         repo_name CHAR(50),
-                        version CHAR(20),
-                        file_path CHAR(100),
+                        version_ids VARCHAR(200),
+                        func_name VARCHAR(100),
+                        hash_val CHAR(100),
                         func_weight FLOAT);""")
+        # version_ids是version_id的列表
 
     return db, cursor
 
@@ -176,17 +195,23 @@ def SaveRepoInfo(db, cursor):
     repo_list = os.listdir(args.src_path)
 
     for repo_name in repo_list:
-        repo_path = os.path.join(args.src_path, repo_name).replace("\\", "/")
-        version = "1.0.0"
-        repo_date = "2020.1.1"
-        try:
-            # 执行sql语句
-            cursor.execute("""insert into repo(
-                repo_name, repo_path, version, repo_date)
-                VALUES ('%s', '%s', '%s', '%s')""" % (repo_name, repo_path, version, repo_date))
-            # 提交到数据库执行
-            db.commit()
-        except:
-            traceback.print_exc()
-            # 如果发生错误则回滚
-            db.rollback()
+        repo_path_base = os.path.join(args.src_path, repo_name)
+        version_dict = {}   # 版本和日期的对应字典
+        f = open(os.path.join(repo_path_base, "date.txt"), "r")
+        f_lines = f.readlines()
+        for line in f_lines:
+            version_dict["".join(line.split(' ')[:-1])] = line.split(' ')[-1]
+        for idx ,(repo_version, repo_date) in enumerate(version_dict.items()):
+            version = repo_version[:-7].split('-')[-1]
+            repo_date = repo_date.replace('T', ' ').strip()
+            try:
+                # 执行sql语句
+                cursor.execute("""insert into repo (repo_name, version, version_id, repo_date)
+                    VALUES ('%s', '%s', %s, '%s')""" % (repo_name, version, idx+1, repo_date))
+                # 提交到数据库执行
+                db.commit()
+            except:
+                traceback.print_exc()
+                print("repo_name = %s" % repo_name)
+                # 如果发生错误则回滚
+                db.rollback()

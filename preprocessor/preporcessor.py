@@ -61,7 +61,7 @@ def CheckPrime(db, cursor, S_name, S_birth):
 
 def redundancyElimination(db, cursor):
     # 读取所有repo
-    cursor.execute("""select repo_name, repo_path, version, repo_date 
+    cursor.execute("""select repo_name, version, version_id, repo_date 
                     from repo;""")
     repos = cursor.fetchall()
     for repo_info in repos:
