@@ -70,3 +70,23 @@ if __name__ == "__main__":
 
     for package in packages:
         pypi_downloader.build_package_cache(settings, package)
+    
+    cnt = 0
+    while cnt < 5:
+        redo_list = []
+        try:
+            with open('redo.log', 'r') as redo:
+                redo_list = redo.read()
+                redo_list = redo_list.split('\n')[:-1]
+                print(redo_list)
+            os.remove('redo.log')
+            if len(redo_list) == 0:
+                break
+            for package in redo_list:
+                pypi_downloader.build_package_cache(settings, package)
+            cnt += 1
+        except:
+            break
+    if cnt == 5:
+        print('Still some packages missing:', redo_list)
+
