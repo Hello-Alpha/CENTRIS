@@ -26,6 +26,12 @@ Invalid package''表示包不存在或请求错误，不会重试。
 
 在src目录下使用`tar.sh`对收集的pypi库文件进行解压
 
+### 配置信息
+
+repos_5000.txt	包含了top5000的项目
+
+config_full.txt		包含了全部项目
+
 
 
 ## preprocessor
