@@ -1,19 +1,21 @@
 # -*- coding: utf-8 -*-
 
-
 import os
 import argparse
 import configparser
-from fileinput import filename
 import os
 import errno
 import requests
 import click
 
 from pkg_resources import Requirement
-
+from threading import Thread
+import threading
 
 _GENERIC_ADDRESS = "https://pypi.org/pypi/{package}/json"
+
+redo_list = []
+lock = threading.Lock()
 
 def build_package_cache(settings, package):
     """Download all package versions from PyPI for specified package."""
@@ -54,8 +56,13 @@ def resolve_url_list(settings, package):
         package_request = requests.get(package_addr)
     except:
         print('Failed request for %s'%package)
-        with open('redo.log', 'a') as redo:
-            redo.write(package + '\n')
+        global redo_list
+        lock.acquire()
+        if package not in redo_list:
+            redo_list.append(package)
+        lock.release()
+        # with open('redo.log', 'a') as redo:
+            # redo.write(package + '\n')
         return None, None
 
     if package_request.status_code >= 400 or package_request.status_code == 104:
@@ -241,25 +248,47 @@ if __name__ == "__main__":
     config_path = os.path.abspath(parser.parse_args().configfile)
     settings, packages = parse_config(config_path)
 
+    threads = []
+    cnt_thread = 0
+    N_THREADS = 32
     for package in packages:
-        build_package_cache(settings, package)
+        # build_package_cache(settings, package)
+        threads.append(Thread(target=build_package_cache, args=(settings, package)))
+        threads[-1].start()
+        cnt_thread += 1
+        print('Thread %d'%(len(threads)))
+        if len(threads) == N_THREADS or cnt_thread == len(packages):
+            for t in threads:
+                t.join()
+            threads = []
     
     cnt = 0
     while cnt < 5:
         redo_list = []
         try:
-            with open('redo.log', 'r') as redo:
-                redo_list = redo.read()
-                redo_list = redo_list.split('\n')[:-1]
-                print(redo_list)
-            os.remove('redo.log')
+            # with open('redo.log', 'r') as redo:
+            #     redo_list = redo.read()
+            #     redo_list = redo_list.split('\n')[:-1]
+            #     print(redo_list)
+            # os.remove('redo.log')
             if len(redo_list) == 0:
+                print('Finished~')
                 break
+            threads = []
+            cnt_sum = 0
             for package in redo_list:
-                build_package_cache(settings, package)
+                threads.append(Thread(target=build_package_cache, args=(settings, package)))
+                threads[-1].start()
+                cnt_sum += 1
+                if len(threads) == N_THREADS or cnt_sum == len(redo_list):
+                    for t in threads:
+                        t.join()
+                    threads = []
             cnt += 1
         except:
             break
-    if cnt == 5:
+    if cnt == 5 and len(redo_list) != 0:
         print('Still some packages missing:', redo_list)
+        with open('redo.log', 'w') as redo:
+            redo.write(str(redo_list))
 
