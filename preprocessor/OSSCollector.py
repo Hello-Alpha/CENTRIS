@@ -1,4 +1,5 @@
 import copy
+import math
 import os
 import tlsh
 from tqdm import tqdm
@@ -32,6 +33,17 @@ class TXTProcess():
     def remov_blank(self, func_str):
         return func_str.replace('\t', '').replace('\n', '').replace(' ', '').strip()
 
+class func_info():
+    def __init__(self, func_name, version_id, func_date):
+        self.func_name = func_name
+        self.version_ids = str(version_id)
+        self.version_num = 1
+        self.func_date = func_date
+
+    def addversion(self, version_id):
+        if self.version_ids.split(' ')[-1] != str(version_id):
+            self.version_ids += ' ' + str(version_id)
+            self.version_num += 1
 
 def get_file(repo_path):
     file_list = []
@@ -51,7 +63,7 @@ def get_func(node, funclist):
             get_func(sub_node, funclist)
 
 
-def parse(func_dict, version_id, file_list):
+def parse(func_dict, version_id, repo_date, file_list):
     for file in file_list:
         f = open(file, "r", encoding="utf-8")
 
@@ -87,66 +99,77 @@ def parse(func_dict, version_id, file_list):
             elif TLSH == "TNULL" or TLSH == "" or TLSH == "NULL":
                 continue
 
-            # func_dict字典：{“funcHash”: {函数名, 版本id}}}, 可能存在哈希碰撞
+            # func_dict字典：{“funcHash”: func_info}, 可能存在哈希碰撞
             if TLSH not in func_dict:
-                func_dict[TLSH] = {func.name: str(version_id)}
+                func_dict[TLSH] = func_info(func_name=func.name, version_id=version_id, func_date=repo_date)
             else:
-                if func.name in func_dict[TLSH]:
-                    if str(version_id) not in func_dict[TLSH][func.name].split(' '):    # 防止出现重复
-                        func_dict[TLSH][func.name] += ' ' + str(version_id)
+                if func_dict[TLSH].func_name == func.name:
+                    func_dict[TLSH].addversion(version_id)
                 else:
-                    # 哈希碰撞
-                    func_dict[TLSH][func.name] = str(version_id)
+                    print("哈希碰撞")
 
     return func_dict
 
 
 def Analyze(db, cursor):
+    f = open("repo_func_summary.txt", "w")
+    repo_func_summary = ["format: repo_name(version_number) - function number\n",
+                         "---------------------------------------------------\n","",
+                         "---------------------------------------------------\n"]
     # 读取所有repo
     cursor.execute("""select repo_name, version, version_id, repo_date 
                     from repo
                     order by repo_name, version_id""")
     repo_list = cursor.fetchall()
     total_func_num = 0
-    cur_repo_name = ''
+    version_num = 0
     func_dict = {}
     with tqdm(total=len(repo_list), smoothing=0.0) as pbar:
         for idx, repo in enumerate(repo_list):
-            if cur_repo_name != repo[0]:
-                cur_repo_name = repo[0]
-                total_func_num += len(func_dict)
-
-                # 将函数插入数据库
-                try:
-                    for hashval, functions in func_dict.items():
-                        for func_name, version_ids in functions.items():
-                            # 执行sql语句
-                            cursor.execute("""insert into func (repo_name, version_ids, func_name, hash_val, func_weight)
-                                    VALUES ('%s', '%s', '%s', '%s', 0.0)""" % (repo[0], version_ids, func_name, hashval))
-                            # 提交到数据库执行
-                            db.commit()
-                except:
-                    traceback.print_exc()
-                    print("version_ids = %s" % version_ids)
-                    print("func_name = %s" % func_name)
-                    # 如果发生错误则回滚
-                    db.rollback()
-
-                func_dict.clear()
-
+            cur_repo_name = repo[0]
+            version_num += 1
             repo_path = "%s\\%s\\%s-%s" % (args.src_path, repo[0], repo[0], repo[1])
             # 分析一个工程
             file_list = get_file(repo_path)  # 获取py文件列表
-
+            if len(file_list) == 0:
+                print("Invalid reponame: %s" % cur_repo_name)
             try:
-                func_dict = parse(func_dict, repo[2], file_list)  # 分析该项目中的所有文件
+                func_dict = parse(func_dict, repo[2], repo[3], file_list)  # 分析该项目中的所有文件
             except:
                 traceback.print_exc()
+
+            if idx == len(repo_list) -1 or cur_repo_name != repo_list[idx + 1][0]:
+                # 将函数插入数据库
+                try:
+                    for hashval, func in func_dict.items():
+                        func_weight = math.log(float(version_num)/float(func.version_num))  # 以e为底数
+                        # 执行sql语句
+                        cursor.execute("""insert into func (repo_name, version_ids, func_name, hash_val, func_date, func_weight)
+                                VALUES ('%s', '%s', '%s', '%s', '%s', %f)""" % (cur_repo_name, func.version_ids, func.func_name, hashval, func.func_date, func_weight))
+                        # 提交到数据库执行
+                        db.commit()
+                except:
+                    traceback.print_exc()
+                    print("cur_repo_name = %s" % cur_repo_name)
+                    # 如果发生错误则回滚
+                    db.rollback()
+
+                repo_func_summary.append("%s(%d) - %d\n" % (cur_repo_name, version_num, len(func_dict)))
+                version_num = 0
+                total_func_num += len(func_dict)
+                func_dict.clear()
 
             pbar.set_postfix(
                 {"repo_name": repo[0], "version": repo[1], "cur_func_num": len(func_dict), "total_func_num": total_func_num})
             pbar.update()
 
+
+        repo_func_summary[2] = "total function number = %d\n" % total_func_num
+        f.writelines(repo_func_summary)
+
+        print("-----------------------\nsummary:")
+        print("total function number = %d" % (total_func_num))
+        print("-----------------------")
 
 
 
@@ -185,6 +208,7 @@ def initDatabase(initTable=False):
                         version_ids VARCHAR(200),
                         func_name VARCHAR(100),
                         hash_val CHAR(100),
+                        func_date DATETIME,
                         func_weight FLOAT);""")
         # version_ids是version_id的列表
 

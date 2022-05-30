@@ -1,0 +1,7 @@
+format: repo_name(version_number) - function number
+---------------------------------------------------
+total function number = 246
+---------------------------------------------------
+0-core-client(5) - 243
+00000a(1) - 2
+0html(1) - 1
