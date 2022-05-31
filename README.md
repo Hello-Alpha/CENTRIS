@@ -9,7 +9,7 @@
 
 编写配置文件，示例如config.
 
-(new) 把文件整合到了`main.py`里，直接`python3 main.py config`就可以了\~
+(new) 把文件整合到了`main.py`里，直接`python main.py config`就可以了\~
 
 结果放在./cache中.
 在collector文件夹下`./tar.sh`解压缩.
@@ -46,9 +46,42 @@ main文件为主程序
 
 
 
-repo_func_summary.txt记录了每个repo的函数数量
+repo_func_summary.txt记录了每个repo的函数数量（仅在analyze模式生成，当需要从断点处继续分析的时候不会生成）
 
 copy_summary.txt里面保存了OSS抄的哪些OSS
+
+
+
+### main
+
+```python
+if mode == "analyze":
+	分析repo构建数据库，将信息保存在数据库中
+elif mode == "analyze_file":
+    分析repo构建数据库，将信息保存在文件中
+elif mode == "segment":
+    OSS去重，保留prime部分
+elif mode == "test":
+    可以用于查看数据库
+```
+
+
+
+### 从断点处继续分析
+
+如果需要从断点重新分析，需要将mode设为mode == "analyze_file"。
+
+如果想重新分析所有的repo，可以将continue_flag设置为False
+
+一般地，如果想继续分析，可以将continue_flag设置True
+
+
+
+##### 用于构建数据库的文件
+
+repo_info：保存了所有repo的信息
+
+results：每一个repo一个文件夹，里面保存了repo中函数信息
 
 
 
