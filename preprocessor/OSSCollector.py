@@ -187,6 +187,8 @@ def AnalyzeFile(continue_flag):
         total_func_num = 0
         finished_repos = []
     else:
+        if not os.path.exists("./results"):
+            os.mkdir("./results")
         # 从未分析的包开始
         total_func_num = 0
         finished_repos = [repo_name[:-4] for repo_name in os.listdir("./results")]
@@ -198,13 +200,18 @@ def AnalyzeFile(continue_flag):
 
     version_num = 0
     func_dict = {}
+    calculated_repos = []   # 已经被遍历到的分析过的（results中的）repo
     with tqdm(total=len(repo_list), smoothing=0.0) as pbar:
         for idx, repo in enumerate(repo_list):
             cur_repo_name = repo[0]
 
             if continue_flag is True and cur_repo_name in finished_repos:
-                with open("./results/%s.txt" % cur_repo_name, "r") as fp:
-                    total_func_num += len(fp.readlines())
+                # 避免重复计算
+                if cur_repo_name not in calculated_repos:
+                    with open("./results/%s.txt" % cur_repo_name, "r") as fp:
+                        total_func_num += len(fp.readlines())
+                        calculated_repos.append(cur_repo_name)
+                # 更细进度条
                 pbar.set_postfix(
                     {"repo_name": repo[0], "version": repo[1], "cur_func_num": len(func_dict),
                      "total_func_num": total_func_num})
@@ -220,7 +227,8 @@ def AnalyzeFile(continue_flag):
             try:
                 func_dict = parse(func_dict, repo[2], repo[3], file_list)  # 分析该项目中的所有文件
             except:
-                traceback.print_exc()
+                # traceback.print_exc()
+                pass
 
             if idx == len(repo_list) -1 or cur_repo_name != repo_list[idx + 1][0]:
                 with open("./results/%s.txt" % cur_repo_name, "w") as f_func:
@@ -275,7 +283,7 @@ def initDatabase(initTable=False):
 
         cursor.execute("""create table func (
                         repo_name CHAR(50),
-                        version_ids VARCHAR(200),
+                        version_ids VARCHAR(5000),
                         func_name VARCHAR(100),
                         hash_val CHAR(100),
                         func_date DATETIME,
@@ -329,7 +337,62 @@ def SaveRepoInfoFile():
         f_lines = f.readlines()
         for line in f_lines:
             version_dict["".join(line.split(' ')[:-1])] = line.split(' ')[-1]
-        for idx ,(repo_version, repo_date) in enumerate(version_dict.items()):
-            version = repo_version[len(repo_name)+1:-7]
-            repo_date = repo_date.replace('T', ' ').strip()
-            f_repo.write("%s*%s*%s*%s\n" % (repo_name, version, idx+1, repo_date))
+
+        version_list = []
+        version_num = 0
+        for repo_version, repo_date in version_dict.items():
+            if repo_version[-4:] == '.zip':
+                version = repo_version[len(repo_name) + 1:-4].replace('-', '_')
+            elif repo_version[-7:] == '.tar.gz':
+                version = repo_version[len(repo_name) + 1:-7].replace('-', '_')
+            else:
+                version = None
+                print("Invalid repo name: %s" % repo_version)
+
+            if version not in version_list:
+                version_num += 1
+                version_list.append(version)
+                repo_date = repo_date.replace('T', ' ').strip()
+                f_repo.write("%s*%s*%s*%s\n" % (repo_name, version, version_num, repo_date))
+
+
+def savefile(db, cursor, repo_info_file_list):
+    for repo_file in repo_info_file_list:
+        with open("%s" % repo_file, "r") as f:
+            lines = f.readlines()
+            for line in lines:
+                one_tuple = line.strip().split('*')
+                try:
+                    # 执行sql语句
+                    cursor.execute("""insert into repo (repo_name, version, version_id, repo_date)
+                        VALUES ('%s', '%s', %s, '%s')""" % (one_tuple[0], one_tuple[1], one_tuple[2], one_tuple[3]))
+                    # 提交到数据库执行
+                    db.commit()
+                except:
+                    traceback.print_exc()
+                    print("repo_name = %s" % one_tuple[0])
+                    # 如果发生错误则回滚
+                    db.rollback()
+
+    repos = os.listdir("./results")
+    with tqdm(total=len(repos)) as pbar:
+        for repo in repos:
+            with open("./results/%s" % repo, "r") as f:
+                lines = f.readlines()
+                for line in lines:
+                    one_tuple = line.strip().split('*')
+                    # 将函数插入数据库
+                    try:
+                        # 执行sql语句
+                        cursor.execute("""insert into func (repo_name, version_ids, func_name, hash_val, func_date, func_weight)
+                                                VALUES ('%s', '%s', '%s', '%s', '%s', %f)""" % (
+                        one_tuple[0], one_tuple[1], one_tuple[2], one_tuple[3], one_tuple[4], float(one_tuple[5])))
+                        # 提交到数据库执行
+                        db.commit()
+                    except:
+                        traceback.print_exc()
+                        # 如果发生错误则回滚
+                        db.rollback()
+
+            pbar.set_postfix({"repo_name": repo[:-4]})
+            pbar.update()

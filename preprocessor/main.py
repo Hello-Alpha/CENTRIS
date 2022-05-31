@@ -22,6 +22,13 @@ elif mode == "analyze_file":
     SaveRepoInfoFile()
     AnalyzeFile(continue_flag)
 
+elif mode == "save_file":
+    db, cursor = initDatabase(initTable=True)
+    repo_info_file_list = ['./repo_info.txt']
+    savefile(db, cursor, repo_info_file_list)
+    # 关闭数据库连接
+    db.close()
+
 elif mode == "segment":
     db, cursor = initDatabase(initTable=False)
 
