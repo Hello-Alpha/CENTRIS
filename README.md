@@ -38,17 +38,9 @@ config_full.txt		包含了全部项目
 
 ## preprocessor
 
-### 文件
+### 使用方法
 
-config里保存了全局参数
-
-main文件为主程序
-
-
-
-repo_func_summary.txt记录了每个repo的函数数量（仅在analyze模式生成，当需要从断点处继续分析的时候不会生成）
-
-copy_summary.txt里面保存了OSS抄的哪些OSS
+运行main函数即可
 
 
 
@@ -64,6 +56,20 @@ elif mode == "segment":
 elif mode == "test":
     可以用于查看数据库
 ```
+
+
+
+### 文件
+
+config里保存了全局参数
+
+main文件为主程序
+
+
+
+repo_func_summary.txt记录了每个repo的函数数量（仅在analyze模式生成，当需要从断点处继续分析的时候不会生成）
+
+copy_summary.txt里面保存了OSS抄的哪些OSS
 
 
 
