@@ -24,7 +24,9 @@ Invalid package''表示包不存在或请求错误，不会重试。
 
 
 
-在src目录下使用`tar.sh`对收集的pypi库文件进行解压
+在src目录下使用`tar.sh`对收集的pypi库文件进行重命名&解压
+
+（linux下需要先`sudo apt in`）
 
 ### 配置信息
 
