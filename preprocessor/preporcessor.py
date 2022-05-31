@@ -39,6 +39,7 @@ def CheckPrime(db, cursor, S_name, S, DataBase):
 
     # members包含了抄的OSS名字
     for repo_name in G.keys():
+        G[repo_name] = list(set(G[repo_name]))
         phi = float(len(G[repo_name])) / float(len(S))
         if phi >= args.theta:
             isPrime = False

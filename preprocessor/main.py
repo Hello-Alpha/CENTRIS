@@ -2,7 +2,8 @@ from config import args
 from OSSCollector import *
 from preporcessor import *
 
-mode = "test"
+mode = "analyze_file"
+continue_flag = True
 
 if mode == "analyze":
     db, cursor = initDatabase(initTable=True)
@@ -14,6 +15,14 @@ if mode == "analyze":
                     from func;""")
     repo_list = cursor.fetchall()
     print("num_repo_list1 = %d" % len(repo_list))
+    # 关闭数据库连接
+    db.close()
+
+elif mode == "analyze_file":
+    if continue_flag == False:
+        SaveRepoInfoFile()
+    AnalyzeFile(continue_flag)
+
 elif mode == "segment":
     db, cursor = initDatabase(initTable=False)
 
@@ -28,6 +37,9 @@ elif mode == "segment":
                     from func;""")
     repo_list = cursor.fetchall()
     print("num_repo_list2 = %d"%len(repo_list))
+    # 关闭数据库连接
+    db.close()
+
 elif mode == "test":
     db, cursor = initDatabase(initTable=False)
 
@@ -36,6 +48,7 @@ elif mode == "test":
     repo_list = cursor.fetchall()
 
     print("num_repo_list2 = %d" % len(repo_list))
+    # 关闭数据库连接
+    db.close()
 
-# 关闭数据库连接
-db.close()
+
