@@ -19,8 +19,7 @@ if mode == "analyze":
     db.close()
 
 elif mode == "analyze_file":
-    if continue_flag == False:
-        SaveRepoInfoFile()
+    SaveRepoInfoFile()
     AnalyzeFile(continue_flag)
 
 elif mode == "segment":

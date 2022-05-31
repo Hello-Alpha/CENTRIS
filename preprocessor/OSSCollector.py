@@ -35,6 +35,7 @@ class TXTProcess():
     def remov_blank(self, func_str):
         return func_str.replace('\t', '').replace('\n', '').replace(' ', '').strip()
 
+
 class func_info():
     def __init__(self, func_name, version_id, func_date):
         self.func_name = func_name
@@ -46,6 +47,7 @@ class func_info():
         if self.version_ids.split(' ')[-1] != str(version_id):
             self.version_ids += ' ' + str(version_id)
             self.version_num += 1
+
 
 def get_file(repo_path):
     file_list = []
@@ -130,7 +132,7 @@ def Analyze(db, cursor):
         for idx, repo in enumerate(repo_list):
             cur_repo_name = repo[0]
             version_num += 1
-            repo_path = "%s\\%s\\%s-%s" % (args.src_path, repo[0], repo[0], repo[1])
+            repo_path = "%s\\%s\\%s_%s" % (args.src_path, repo[0], repo[0], repo[1])
             # 分析一个工程
             file_list = get_file(repo_path)  # 获取py文件列表
             if len(file_list) == 0:
@@ -173,6 +175,7 @@ def Analyze(db, cursor):
         print("total function number = %d" % (total_func_num))
         print("-----------------------")
 
+
 def AnalyzeFile(continue_flag):
     f_repo = open("repo_info.txt", "r")
 
@@ -181,15 +184,13 @@ def AnalyzeFile(continue_flag):
         if os.path.exists("./results"):
             shutil.rmtree("./results")
         os.mkdir("./results")
-
         total_func_num = 0
+        finished_repos = []
     else:
         # 从未分析的包开始
         total_func_num = 0
         finished_repos = [repo_name[:-4] for repo_name in os.listdir("./results")]
-        for idx, repo in enumerate(finished_repos):
-            with open("./results/%s.txt" % repo, "r") as fp:
-                total_func_num += len(fp.readlines())
+
 
     # 读取所有repo
     f_repo_lines = f_repo.readlines()
@@ -201,16 +202,17 @@ def AnalyzeFile(continue_flag):
         for idx, repo in enumerate(repo_list):
             cur_repo_name = repo[0]
 
-            if continue_flag == True and cur_repo_name in finished_repos:
+            if continue_flag is True and cur_repo_name in finished_repos:
+                with open("./results/%s.txt" % cur_repo_name, "r") as fp:
+                    total_func_num += len(fp.readlines())
                 pbar.set_postfix(
                     {"repo_name": repo[0], "version": repo[1], "cur_func_num": len(func_dict),
                      "total_func_num": total_func_num})
                 pbar.update()
                 continue
-            continue_flag = False
 
             version_num += 1
-            repo_path = "%s\\%s\\%s-%s" % (args.src_path, repo[0], repo[0], repo[1])
+            repo_path = "%s\\%s\\%s_%s" % (args.src_path, repo[0], repo[0], repo[1])
             # 分析一个工程
             file_list = get_file(repo_path)  # 获取py文件列表
             if len(file_list) == 0:
@@ -239,6 +241,7 @@ def AnalyzeFile(continue_flag):
         print("-----------------------\nsummary:")
         print("total function number = %d" % (total_func_num))
         print("-----------------------")
+
 
 def initDatabase(initTable=False):
     # 打开数据库连接
@@ -296,7 +299,7 @@ def SaveRepoInfo(db, cursor):
         f_lines = f.readlines()
         for line in f_lines:
             version_dict["".join(line.split(' ')[:-1])] = line.split(' ')[-1]
-        for idx ,(repo_version, repo_date) in enumerate(version_dict.items()):
+        for idx, (repo_version, repo_date) in enumerate(version_dict.items()):
             version = repo_version[len(repo_name)+1:-7]
             repo_date = repo_date.replace('T', ' ').strip()
             try:
