@@ -42,6 +42,8 @@ config_full.txt		包含了全部项目
 
 运行main函数即可
 
+==**注意事项：可以以小批量分批次运行，每次运行的时候，需要清空results文件夹，如果需要断点功能，要将continue_flag设为True，在运行一个批次的时候就不要动results文件夹和repo_info.txt文件了，等一个批次运行完毕之后，要保存这个批次运行得到的results文件夹和repo_info.txt文件，不然会被覆盖掉！！**==
+
 
 
 ### main
