@@ -12,6 +12,9 @@
 (new) 把文件整合到了`main.py`里，在Windows中直接`python main.py config`就可以了，Linux中使用`python3 main.py config` 
 
 结果放在./cache中.
+
+==与cache同级，先新建一个date文件夹==，date.txt会被重命名成OSS名，然后统一存放到date文件夹中
+
 在collector文件夹下`./tar.sh`解压缩.
 
 ``Failed to request xxx''表示request失败，会被放进redo.log里。

@@ -27,7 +27,8 @@ do
     if [ -d $i ]; then
     cd $i
     echo $i
-
+    mv date.txt $i.txt
+    mv $i.txt ../../date
     #解压缩tar.gz
     ls *.tar.gz 1>ls_gz.log 2>/dev/null
     for k in $(cat ls_gz.log)   
