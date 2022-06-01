@@ -9,7 +9,7 @@
 
 编写配置文件，示例如config.
 
-(new) 把文件整合到了`main.py`里，直接`python main.py config`就可以了\~
+(new) 把文件整合到了`main.py`里，在Windows中直接`python main.py config`就可以了，Linux中使用`python3 main.py config` 
 
 结果放在./cache中.
 在collector文件夹下`./tar.sh`解压缩.
@@ -26,7 +26,7 @@ Invalid package''表示包不存在或请求错误，不会重试。
 
 在src目录下使用`tar.sh`对收集的pypi库文件进行重命名&解压
 
-（linux下需要先`sudo apt in`）
+（linux下需要先`sudo apt install unzip`）
 
 ### 配置信息
 

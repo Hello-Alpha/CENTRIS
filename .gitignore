@@ -1,2 +1,2 @@
-
-src/.history
+.history/*
+collector/cache/*
