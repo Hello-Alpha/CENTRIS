@@ -343,13 +343,17 @@ def SaveRepoInfoFile():
         for repo_version, repo_date in version_dict.items():
             if repo_version[-4:] == '.zip':
                 version = repo_version[len(repo_name) + 1:-4].replace('-', '_')
+            elif repo_version[-4:] == '.tgz':
+                version = repo_version[len(repo_name) + 1:-4].replace('-', '_')
             elif repo_version[-7:] == '.tar.gz':
                 version = repo_version[len(repo_name) + 1:-7].replace('-', '_')
+            elif repo_version[-8:] == '.tar.bz2':
+                version = repo_version[len(repo_name) + 1:-8].replace('-', '_')
             else:
                 version = None
                 print("Invalid repo name: %s" % repo_version)
 
-            if version not in version_list:
+            if version is not None and version not in version_list:
                 version_num += 1
                 version_list.append(version)
                 repo_date = repo_date.replace('T', ' ').strip()
