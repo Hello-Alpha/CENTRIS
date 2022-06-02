@@ -15,8 +15,6 @@
 
 ==与cache同级，先新建一个date文件夹==，date.txt会被重命名成OSS名，然后统一存放到date文件夹中
 
-在collector文件夹下`./tar.sh`解压缩.
-
 ``Failed to request xxx''表示request失败，会被放进redo.log里。
 
 Invalid package''表示包不存在或请求错误，不会重试。
@@ -26,22 +24,24 @@ Invalid package''表示包不存在或请求错误，不会重试。
 不能Ctrl-C中断，只能直接关掉命令行窗口或kill(QAQ).
 
 
-
-在src目录下使用`tar.sh`对收集的pypi库文件进行重命名&解压
-
-（linux下需要先`sudo apt install unzip`）
-
 ### 配置信息
 
 repos_5000.txt	包含了top5000的项目
 
 config_full.txt		包含了全部项目
 
+top10000.json   下载量top 10000的PyPI包
 
 
 ## preprocessor
 
 ### 使用方法
+
+#### 多线程版本
+
+`.\run.bat`
+
+#### Old version
 
 修改config.py中的--src_path参数，设置为解压之后的repo的文件夹，然后将main函数中的参数设为mode = "analyze_file"，continue_flag = True，最后运行main函数即可。
 
