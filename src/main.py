@@ -127,19 +127,21 @@ if __name__ == "__main__":
     threads = set()
     cnt_thread = 0
 
-    # 初始化pool
-    length_packages = len(packages)
-    while cnt_thread < min(N_THREADS, length_packages):
-        threads.add(pool.submit(main_thread, settings, packages[cnt_thread]))
-        cnt_thread += 1
+    # # 初始化pool
+    # length_packages = len(packages)
+    # while cnt_thread < min(N_THREADS, length_packages):
+    #     threads.add(pool.submit(main_thread, settings, packages[cnt_thread]))
+    #     cnt_thread += 1
     
-    # pool update
-    while cnt_thread < length_packages:
-        for c in as_completed(threads):
-            threads.remove(c)
-        while cnt_thread < length_packages and len(threads) < N_THREADS:
-            threads.add(pool.submit(main_thread, settings, packages[cnt_thread]))
-            cnt_thread += 1
+    # # pool update
+    # while cnt_thread < length_packages:
+    #     for c in as_completed(threads):
+    #         threads.remove(c)
+    #     while cnt_thread < length_packages and len(threads) < N_THREADS:
+    #         threads.add(pool.submit(main_thread, settings, packages[cnt_thread]))
+    #         cnt_thread += 1
+    # pool.shutdown(True)
+    pool.map(main_thread, [settings]*len(packages), packages)
     pool.shutdown(True)
 
     # if os.path.exists('abandoned.txt'):
