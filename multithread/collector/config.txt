@@ -1,0 +1,14 @@
+[settings]
+  cache_folder: cache
+  packagetypes: sdist
+  python: py3
+
+[packages]
+  binaryornot
+  jinja2-time
+  pydub
+  pyrogram
+  flask-session
+  docker-compose
+  ifaddr
+  pyhocon
