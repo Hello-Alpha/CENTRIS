@@ -7,6 +7,7 @@ from preprocessor import load_database, code_segmentation
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
 from tar import Decompress_All
+import shutil
 
 def check_dir():
   cwd = os.getcwd()
@@ -99,17 +100,21 @@ def main_thread(settings, package):
   # *.py -> LSH
   analyze_file(package)
 
-  print(package) # 输出已经完成的
-
   global lock
   lock.acquire()
+  print(package) # 输出已经完成的
   with open('done.log', 'a') as f:
     f.write(package+'\n')
   lock.release()
 
+  # Delete source code
+  shutil.rmtree(os.path.join(args.src_path, package))
+
   return
 
 lock = Lock()
+
+# pbar = None
 
 if __name__ == "__main__":
     check_dir() # 初始化result目录
@@ -123,10 +128,11 @@ if __name__ == "__main__":
     cnt_thread = 0
 
     # 初始化pool
-    while cnt_thread < min(N_THREADS, len(packages)):
+    length_packages = len(packages)
+    while cnt_thread < min(N_THREADS, length_packages):
         threads.add(pool.submit(main_thread, settings, packages[cnt_thread]))
         cnt_thread += 1
-    length_packages = len(packages)
+    
     # pool update
     while cnt_thread < length_packages:
         for c in as_completed(threads):
@@ -135,6 +141,16 @@ if __name__ == "__main__":
             threads.add(pool.submit(main_thread, settings, packages[cnt_thread]))
             cnt_thread += 1
     pool.shutdown(True)
+
+    # if os.path.exists('abandoned.txt'):
+    #   with open('abandoned.txt', 'r') as f:
+    #     result_path = args.result_path
+    #     for repo in f:
+    #       try:
+    #         os.remove(os.path.join(result_path, 'repo_date', repo+'.txt'))
+    #         os.remove(os.path.join(result_path, 'repo_func', repo+'.txt'))
+    #       except:
+    #         pass
 
     """后续的Code Segmentation先不做
     """

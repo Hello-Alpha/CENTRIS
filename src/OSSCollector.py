@@ -174,6 +174,8 @@ def analyze_file(repo_name):
         file_list = get_file(repo_path)  # 获取py文件列表
         if len(file_list) == 0:
             print("Invalid reponame: %s" % cur_repo_name)
+            # with open('abandoned.txt', 'w') as f:
+            #     f.write(cur_repo_name+'\n')
         try:
             func_dict = parse(func_dict, repo[2], repo[3], file_list)  # 分析该项目中的所有文件
         except:
