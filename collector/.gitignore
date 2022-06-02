@@ -1,7 +1,0 @@
-sample_config
-*.egg-info/
-/dist/
-/build/
-__pycache__/
-dev_tests/
-cache/
