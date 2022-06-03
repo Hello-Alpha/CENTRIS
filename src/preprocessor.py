@@ -80,6 +80,6 @@ def load_database():
                 lines = f.readlines()
                 for line in lines:
                     DataBase.append(tuple(line.strip().split('*')))
-            pbar.set_postfix({"repo_name": repo})
+            # pbar.set_postfix({"repo_name": repo})
             pbar.update()
     return DataBase
