@@ -68,27 +68,28 @@ def code_segmentation_multithread(DataBase, repos):
       DataBase (list): List of repo_func.
       repos (list): Repo names.
   """
-  if len(DataBase) != len(repos):
-    print(f'Database num {len(DataBase)} does not match Repo num {len(repos)}')
-    return
-  N_THREADS = 64
+
+  """多线程
+  """
+  N_THREADS = 8
   pool = ThreadPoolExecutor(max_workers=N_THREADS)
-  cnt = 0
-  threads = []
-  while cnt < min(N_THREADS, len(repos)):
-    threads.append(pool.submit(code_segmentation, DataBase[cnt], repos[cnt]))
-    cnt += 1
-  while cnt < len(repos):
-    for c in as_completed(threads):
-      err = c.exception()
-      if err is not None:
-          print(f'** Ignored thread exception**\n{err}')
-      threads.remove(c)
-      print(c.result())
-    while cnt < len(repos) and len(threads) < N_THREADS:
-      threads.append(pool.submit(code_segmentation, DataBase[cnt], repos[cnt]))
-      cnt += 1
+  pool.map(code_segmentation, [DataBase]*len(repos), repos)
   pool.shutdown(True)
+
+  """多进程
+  """
+  # args = []
+  # for i in repos:
+  #   args.append((DataBase, i))
+
+  # from multiprocessing import Pool
+  # N_THREADS = 8
+  # pool = Pool(N_THREADS)
+  # pool.starmap_async(code_segmentation, args)
+  # pool.close()
+  # pool.join()
+
+  return
 
 
 def main_thread(settings, package):
@@ -122,41 +123,14 @@ if __name__ == "__main__":
     settings, packages = parse_config(args.config) # 解析配置文件
 
     # 为每个package创建一个线程
-    N_THREADS = 128
-    pool = ThreadPoolExecutor(max_workers=N_THREADS)
-    threads = set()
-    cnt_thread = 0
-
-    # # 初始化pool
-    # length_packages = len(packages)
-    # while cnt_thread < min(N_THREADS, length_packages):
-    #     threads.add(pool.submit(main_thread, settings, packages[cnt_thread]))
-    #     cnt_thread += 1
-    
-    # # pool update
-    # while cnt_thread < length_packages:
-    #     for c in as_completed(threads):
-    #         threads.remove(c)
-    #     while cnt_thread < length_packages and len(threads) < N_THREADS:
-    #         threads.add(pool.submit(main_thread, settings, packages[cnt_thread]))
-    #         cnt_thread += 1
+    # N_THREADS = 128
+    # pool = ThreadPoolExecutor(max_workers=N_THREADS)
+    # pool.map(main_thread, [settings]*len(packages), packages)
     # pool.shutdown(True)
-    pool.map(main_thread, [settings]*len(packages), packages)
-    pool.shutdown(True)
-
-    # if os.path.exists('abandoned.txt'):
-    #   with open('abandoned.txt', 'r') as f:
-    #     result_path = args.result_path
-    #     for repo in f:
-    #       try:
-    #         os.remove(os.path.join(result_path, 'repo_date', repo+'.txt'))
-    #         os.remove(os.path.join(result_path, 'repo_func', repo+'.txt'))
-    #       except:
-    #         pass
 
     """后续的Code Segmentation先不做
     """
-    # print('Code Segmentation...', end='')
-    # DataBase = load_database()
-    # code_segmentation_multithread(DataBase, packages)
-    # print('Finished')
+    print('Code Segmentation...')
+    DataBase = load_database()
+    code_segmentation_multithread(DataBase, packages)
+    print('Finished')

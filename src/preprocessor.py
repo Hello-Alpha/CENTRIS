@@ -52,7 +52,9 @@ def code_segmentation(DataBase, repo_name):
 
     isPrime, copied_OSS = check_prime(DataBase, repo_name, repo_funcs)  # 检查S是否是抄的
 
+    print(repo_name,end='')
     if isPrime is False:
+        print('!')
         with open(os.path.join(args.copy_summary_path, "%s.txt" % repo_name), "w") as f:
             # 将S中抄的部分删除
             for copied_OSS_name, funcs in copied_OSS.items():
@@ -62,6 +64,8 @@ def code_segmentation(DataBase, repo_name):
         with open(os.path.join(args.rm_result_path, "%s.txt" % repo_name), "w") as f:
             for func in repo_funcs:
                 f.write("%s*%s*%s*%s*%s*%s\n" % (func[0], func[1], func[2], func[3], func[4], func[5]))
+    else:
+        print('~')
 
 
 def load_database():
