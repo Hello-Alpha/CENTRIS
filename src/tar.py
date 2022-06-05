@@ -68,7 +68,7 @@ def Decompress_All(path):
                     os.replace(os.path.join(path, dir_), os.path.join(path, dir))
 
     else:
-        print("this path not exists!")
+        print("this path not exists!: %s"%path)
 
 def Decompression_file(file_name):
     if(file_name.find('.gz') != -1):

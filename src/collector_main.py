@@ -35,7 +35,8 @@ def build_package_cache(settings, package):
     """Download all package versions from PyPI for specified package."""
 
     pkg_urls, pkg_dates = resolve_url_list(settings, package)
-    if pkg_urls == None:
+    if pkg_urls == None or pkg_urls == []:
+        print('No url for %s'%package)
         return None
     total_entries = len(pkg_urls)
 
@@ -44,9 +45,9 @@ def build_package_cache(settings, package):
     else:
         dates = ''
         index = 0
-        # with click.progressbar(length=total_entries, width=0, label='') as bar:
         
-        args = []
+        urls = []
+        target_files = []
 
         for (project_name, file_name, url) in pkg_urls:
             # bar.label = "{:32s}".format(file_name)
@@ -54,29 +55,13 @@ def build_package_cache(settings, package):
             target_file = os.path.join(target_folder, file_name)
             dates += file_name + ' ' + pkg_dates[index] + '\n'
             index += 1
-            # download_package(url, target_file)
-            args.append((url, target_file))
+            urls.append(url)
+            target_files.append(target_file)
 
-            # bar.update(1) # advance status bar
         
         N_DOWNLOAD = 32
         download_pool = ThreadPoolExecutor(max_workers=N_DOWNLOAD)
-        cnt = 0
-        threads = []
-        while cnt < min(N_DOWNLOAD, len(args)):
-            # print(args[cnt][1])
-            threads.append(download_pool.submit(download_package, args[cnt][0], args[cnt][1]))
-            cnt += 1
-        while cnt < len(args):
-            for c in as_completed(threads):
-                err = c.exception()
-                if err is not None:
-                    print('** Ignored thread exception **')
-                threads.remove(c)
-            while cnt < len(args) and len(threads) < N_DOWNLOAD:
-                print(args[cnt][1])
-                threads.append(download_pool.submit(download_package, args[cnt][0], args[cnt][1]))
-                cnt += 1
+        download_pool.map(download_package, urls, target_files)
         download_pool.shutdown(True)
 
         with open(os.path.join(target_folder, 'date.txt'), 'w') as date:
@@ -99,7 +84,7 @@ def resolve_url_list_latest(settings, package):
         if package not in redo_list:
             redo_list.append(package)
         lock.release()
-        return None, None
+        return [] , []
 
     # print(package_request.status_code)
     if package_request.status_code != 200:
@@ -113,20 +98,6 @@ def resolve_url_list_latest(settings, package):
         package_data = {}
         package_data["releases"] = {}
         pass
-
-    # lastest_version = list(package_data["releases"].keys())[-1]
-
-    # p = package_data["releases"].get(lastest_version)[0]
-
-    # # if (package_is_valid(settings, package)):
-    # file_name = str(p.get('filename'))  # file name
-    # url = str(p.get('url'))             # url
-    # project_name = str(requires.name)         # sub-folder in cache
-    # url = (project_name, file_name, url)
-    # # print(package.get('upload_time'))
-    # date = p.get('upload_time')
-    # # else:
-    # #     return None, None
 
     version = list(package_data['releases'].keys())[-1]
     packages_for_version = package_data['releases'].get(version)
@@ -150,7 +121,7 @@ def resolve_url_list(settings, package):
     requires = Requirement(package)
 
     package_addr = _GENERIC_ADDRESS.format(package=requires.name)
-#    while flag == False:
+
     try:
         package_request = requests.get(package_addr)
     except:
@@ -160,13 +131,11 @@ def resolve_url_list(settings, package):
         if package not in redo_list:
             redo_list.append(package)
         lock.release()
-        return None, None
+        return [], []
 
-    # print(package_request.status_code)
-    if package_request.status_code >= 400 or package_request.status_code == 104:
+    if package_request.status_code != 200:
         print('Invalid package %s'%package)
         return [], []
-    # package_request.raise_for_status()  # raise if response is 4xx/5xx
     try:
         package_data = package_request.json()
     except:
@@ -189,7 +158,6 @@ def resolve_url_list(settings, package):
                 url = str(package.get('url'))             # url
                 project_name = str(requires.name)         # sub-folder in cache
                 url_list.append((project_name, file_name, url))
-                # print(package.get('upload_time'))
                 date_list.append(package.get('upload_time'))
             else:
                 continue

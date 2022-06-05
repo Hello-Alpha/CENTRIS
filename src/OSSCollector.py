@@ -174,6 +174,7 @@ def analyze_file(repo_name):
         file_list = get_file(repo_path)  # 获取py文件列表
         if len(file_list) == 0:
             print("Invalid reponame: %s" % cur_repo_name)
+            print(repo_path)
             # with open('abandoned.txt', 'w') as f:
             #     f.write(cur_repo_name+'\n')
         try:
