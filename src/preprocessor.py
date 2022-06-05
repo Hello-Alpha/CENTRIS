@@ -50,9 +50,10 @@ def code_segmentation(DataBase, repo_name):
 
     repo_funcs = [tuple(func.strip().split('*')) for func in func_list]
 
-    isPrime, copied_OSS = check_prime(DataBase, repo_name, repo_funcs)  # 检查S是否是抄的
+    isPrime, copied_OSS = check_prime(
+        DataBase, repo_name, repo_funcs)  # 检查S是否是抄的
 
-    print(repo_name,end='')
+    print(repo_name, end='')
     if isPrime is False:
         print('!')
         with open(os.path.join(args.copy_summary_path, "%s.txt" % repo_name), "w") as f:
@@ -63,7 +64,8 @@ def code_segmentation(DataBase, repo_name):
                     repo_funcs.remove(func)
         with open(os.path.join(args.rm_result_path, "%s.txt" % repo_name), "w") as f:
             for func in repo_funcs:
-                f.write("%s*%s*%s*%s*%s*%s\n" % (func[0], func[1], func[2], func[3], func[4], func[5]))
+                f.write("%s*%s*%s*%s*%s*%s\n" %
+                        (func[0], func[1], func[2], func[3], func[4], func[5]))
     else:
         print('~')
 
@@ -72,9 +74,12 @@ def load_database():
     DataBase = []
     repo_func_path = os.path.join(args.result_path, "repo_func")
     repo_list = os.listdir(repo_func_path)
-    for repo in repo_list:
-        with open(os.path.join(repo_func_path, repo), "r") as f:
-            lines = f.readlines()
-            for line in lines:
-                DataBase.append(tuple(line.strip().split('*')))
+    with tqdm(total=len(repo_list)) as pbar:
+        for repo in repo_list:
+            with open(os.path.join(repo_func_path, repo), "r") as f:
+                lines = f.readlines()
+                for line in lines:
+                    DataBase.append(tuple(line.strip().split('*')))
+            # pbar.set_postfix({"repo_name": repo})
+            pbar.update()
     return DataBase
