@@ -74,7 +74,6 @@ def main_thread(settings, package):
     analyze_file(package)
   else:
     print(f'Already finished: {package}')
-  return
 
   global lock
   lock.acquire()
@@ -84,7 +83,11 @@ def main_thread(settings, package):
   lock.release()
 
   # Delete repo folder
-  shutil.rmtree(os.path.join(args.src_path, package), ignore_errors=True)
+  # shutil.rmtree(os.path.join(args.src_path, package), ignore_errors=True)
+  import subprocess
+  # Only in Windows!!!
+  if os.path.exists(os.path.join(args.src_path, package)):
+    subprocess.run(['rmdir', '/q', '/s', os.path.join(args.src_path, package)], shell=True)
 
   return
 
@@ -103,7 +106,7 @@ if __name__ == "__main__":
 
     """后续的Code Segmentation先不做
     """
-    DataBase = load_database()
-    print('Code Segmentation...')
-    code_segmentation_multithread(DataBase, packages)
-    print('Finished')
+    # DataBase = load_database()
+    # print('Code Segmentation...')
+    # code_segmentation_multithread(DataBase, packages)
+    # print('Finished')
