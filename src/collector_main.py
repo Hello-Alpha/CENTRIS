@@ -12,6 +12,8 @@ from pkg_resources import Requirement
 from threading import Thread
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from retry import retry
+import logging
 
 _GENERIC_ADDRESS = "https://pypi.org/pypi/{package}/json"
 
@@ -68,23 +70,22 @@ def build_package_cache(settings, package):
             date.write(dates)
         return None
 
-
 def resolve_url_list_latest(settings, package):
     """Build a url list for packages matching the specifications."""
 
     requires = Requirement(package)
 
     package_addr = _GENERIC_ADDRESS.format(package=requires.name)
-    try:
-        package_request = requests.get(package_addr)
-    except:
-        print('Failed request for %s'%package)
-        global redo_list
-        lock.acquire()
-        if package not in redo_list:
-            redo_list.append(package)
-        lock.release()
-        return [] , []
+    # try:
+    package_request = requests.get(package_addr)
+    # except:
+    #     print('Failed request for %s'%package)
+    #     global redo_list
+    #     lock.acquire()
+    #     if package not in redo_list:
+    #         redo_list.append(package)
+    #     lock.release()
+    #     return [] , []
 
     # print(package_request.status_code)
     if package_request.status_code != 200:
@@ -114,7 +115,7 @@ def resolve_url_list_latest(settings, package):
 
     return url, date
 
-
+@retry(tries=5, delay=2.0, logger=logging.getLogger(),)
 def resolve_url_list(settings, package):
     """Build a url list for packages matching the specifications."""
 
@@ -122,19 +123,24 @@ def resolve_url_list(settings, package):
 
     package_addr = _GENERIC_ADDRESS.format(package=requires.name)
 
-    try:
-        package_request = requests.get(package_addr)
-    except:
-        print('Failed request for %s'%package)
-        global redo_list
-        lock.acquire()
-        if package not in redo_list:
-            redo_list.append(package)
-        lock.release()
-        return [], []
+    # try:
+    package_request = requests.get(package_addr)
+    # except:
+    #     print('Failed request for %s'%package)
+    #     global redo_list
+    #     lock.acquire()
+    #     if package not in redo_list:
+    #         redo_list.append(package)
+    #     lock.release()
+    #     return [], []
 
     if package_request.status_code != 200:
         print('Invalid package %s'%package)
+        global lock
+        lock.acquire()
+        with open('failed.txt', 'a') as f:
+            f.write(package + '\n')
+        lock.release()
         return [], []
     try:
         package_data = package_request.json()
@@ -208,20 +214,25 @@ def parse_filename(filename):
 
     return (pyvers, platform)
 
-
+@retry(tries=5, logger=logging.Logger)
 def download_package(url, target_file):
     """Download contents at url-address to file."""
 
     if (not os.path.exists(target_file)):
         flag = False
         while flag == False:
-            try:
+            # try:
                 package_request = requests.get(url, allow_redirects=True)
                 flag = True
-            except:
-                pass
+            # except:
+            #     pass
         if package_request.status_code != 200:
-            print('Skipped invalid package: %s'%url)
+            print('Failed to download: %s'%url)
+            global lock
+            lock.acquire()
+            with open('failed.txt', 'a') as f:
+                f.write(package + '\n')
+            lock.release()
             pass
         # package_request.raise_for_status()  # raise if response is 4xx/5xx
         with open(target_file, 'wb') as target:

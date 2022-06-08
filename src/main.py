@@ -65,11 +65,16 @@ def code_segmentation_multithread(DataBase, repos):
 def main_thread(settings, package):
   # Download
   # build_package_cache_latest(settings, package)
-  build_package_cache(settings, package)
-  # Decompress
-  Decompress_All(os.path.join(args.src_path, package))
-  # *.py -> LSH
-  analyze_file(package)
+  repo_func_path = os.path.join(args.result_path, 'repo_func')
+  if package + '.txt' not in os.listdir(repo_func_path):
+    build_package_cache(settings, package)
+    # Decompress
+    Decompress_All(os.path.join(args.src_path, package))
+    # *.py -> LSH
+    analyze_file(package)
+  else:
+    print(f'Already finished: {package}')
+  return
 
   global lock
   lock.acquire()
