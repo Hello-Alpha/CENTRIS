@@ -65,8 +65,8 @@ def code_segmentation_multithread(DataBase, repos):
 def main_thread(settings, package):
   # Download
   # build_package_cache_latest(settings, package)
-  repo_func_path = os.path.join(args.result_path, 'repo_func')
-  if package + '.txt' not in os.listdir(repo_func_path):
+  # repo_func_path = os.path.join(args.result_path, 'repo_func')
+  if not os.path.exists(os.path.join(args.result_path, 'repo_func', package+'.txt')):
     build_package_cache(settings, package)
     # Decompress
     Decompress_All(os.path.join(args.src_path, package))
