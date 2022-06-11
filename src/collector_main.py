@@ -20,6 +20,7 @@ _GENERIC_ADDRESS = "https://pypi.org/pypi/{package}/json"
 redo_list = []
 lock = threading.Lock()
 
+
 def build_package_cache_latest(settings, package):
     pkg_url, pkg_date = resolve_url_list_latest(settings, package)
     if pkg_url == None:
@@ -33,12 +34,13 @@ def build_package_cache_latest(settings, package):
         f.write(date)
     return
 
+
 def build_package_cache(settings, package):
     """Download all package versions from PyPI for specified package."""
 
     pkg_urls, pkg_dates = resolve_url_list(settings, package)
     if pkg_urls == None or pkg_urls == []:
-        print('No url for %s'%package)
+        print('No url for %s' % package)
         return None
     total_entries = len(pkg_urls)
 
@@ -47,7 +49,7 @@ def build_package_cache(settings, package):
     else:
         dates = ''
         index = 0
-        
+
         urls = []
         target_files = []
 
@@ -60,8 +62,7 @@ def build_package_cache(settings, package):
             urls.append(url)
             target_files.append(target_file)
 
-        
-        N_DOWNLOAD = 32
+        N_DOWNLOAD = 4
         download_pool = ThreadPoolExecutor(max_workers=N_DOWNLOAD)
         download_pool.map(download_package, urls, target_files)
         download_pool.shutdown(True)
@@ -69,6 +70,7 @@ def build_package_cache(settings, package):
         with open(os.path.join(target_folder, 'date.txt'), 'w') as date:
             date.write(dates)
         return None
+
 
 def resolve_url_list_latest(settings, package):
     """Build a url list for packages matching the specifications."""
@@ -89,7 +91,7 @@ def resolve_url_list_latest(settings, package):
 
     # print(package_request.status_code)
     if package_request.status_code != 200:
-        print('Invalid package %s'%package)
+        print('Invalid package %s' % package)
         return [], []
 
     try:
@@ -115,6 +117,7 @@ def resolve_url_list_latest(settings, package):
 
     return url, date
 
+
 @retry(tries=5, delay=2.0, logger=logging.getLogger(),)
 def resolve_url_list(settings, package):
     """Build a url list for packages matching the specifications."""
@@ -135,7 +138,7 @@ def resolve_url_list(settings, package):
     #     return [], []
 
     if package_request.status_code != 200:
-        print('Invalid package %s'%package)
+        print('Invalid package %s' % package)
         global lock
         lock.acquire()
         with open('failed.txt', 'a') as f:
@@ -194,7 +197,8 @@ def package_is_valid(settings, package):
             if (valid_platforms is None):
                 platform_matches = True
             else:
-                platform_matches = any([(_ in platform) for _ in valid_platforms])
+                platform_matches = any([(_ in platform)
+                                       for _ in valid_platforms])
             # return True only if all specifiers match
             return (version_matches and platform_matches)
         else:
@@ -214,6 +218,7 @@ def parse_filename(filename):
 
     return (pyvers, platform)
 
+
 @retry(tries=5, logger=logging.Logger)
 def download_package(url, target_file):
     """Download contents at url-address to file."""
@@ -222,12 +227,12 @@ def download_package(url, target_file):
         flag = False
         while flag == False:
             # try:
-                package_request = requests.get(url, allow_redirects=True)
-                flag = True
+            package_request = requests.get(url, allow_redirects=True)
+            flag = True
             # except:
             #     pass
         if package_request.status_code != 200:
-            print('Failed to download: %s'%url)
+            print('Failed to download: %s' % url)
             global lock
             lock.acquire()
             with open('failed.txt', 'a') as f:
@@ -237,7 +242,7 @@ def download_package(url, target_file):
         # package_request.raise_for_status()  # raise if response is 4xx/5xx
         with open(target_file, 'wb') as target:
             target.write(package_request.content)
-    else: # skip if file is already present in cache
+    else:  # skip if file is already present in cache
         pass
 
     return None
@@ -288,14 +293,14 @@ def parse_config(configfile):
 
     # delmiters=(':',':') to allow for = signs in package version specs
     config = configparser.ConfigParser(allow_no_value=True,
-                                       delimiters=(':',':'))
+                                       delimiters=(':', ':'))
     config.read(configfile)
 
     # get (and possibly create) the defined cache folder
     cache_folder = config['settings'].get('cache_folder', fallback='./')
     packagetypes = config['settings'].get('packagetypes', fallback='wheel')
     platform_tags = config['settings'].get('platform', fallback='')
-    python_tags = config['settings'].get('python', fallback='') 
+    python_tags = config['settings'].get('python', fallback='')
     cache_folder_abspath = os.path.abspath(cache_folder)
     create_directory(cache_folder_abspath)
     if (platform_tags == ''):
@@ -319,25 +324,28 @@ def parse_config(configfile):
 
     return (settings, package_list)
 
+
 if __name__ == "__main__":
     parser = setup_parser()
     config_path = os.path.abspath(parser.parse_args().configfile)
     settings, packages = parse_config(config_path)
 
-    N_THREADS = 32
+    N_THREADS = 4
     pool = ThreadPoolExecutor(max_workers=N_THREADS)
     threads = []
     cnt_thread = 0
 
     while cnt_thread < min(N_THREADS, len(packages)):
-        threads.append(pool.submit(build_package_cache, settings, packages[cnt_thread]))
+        threads.append(pool.submit(build_package_cache,
+                       settings, packages[cnt_thread]))
         cnt_thread += 1
     length_packages = len(packages)
     while cnt_thread < length_packages:
         for c in as_completed(threads):
             threads.remove(c)
         while cnt_thread < length_packages and len(threads) < N_THREADS:
-            threads.append(pool.submit(build_package_cache, settings, packages[cnt_thread]))
+            threads.append(pool.submit(build_package_cache,
+                           settings, packages[cnt_thread]))
             cnt_thread += 1
     pool.shutdown(True)
 
@@ -351,7 +359,8 @@ if __name__ == "__main__":
             threads = []
             cnt_sum = 0
             for package in redo_list:
-                threads.append(Thread(target=build_package_cache, args=(settings, package)))
+                threads.append(
+                    Thread(target=build_package_cache, args=(settings, package)))
                 threads[-1].start()
                 cnt_sum += 1
             for t in threads:
@@ -363,4 +372,3 @@ if __name__ == "__main__":
         print('Still some packages missing:', redo_list)
         with open('redo.log', 'w') as redo:
             redo.write(str(redo_list))
-

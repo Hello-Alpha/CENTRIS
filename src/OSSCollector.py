@@ -29,7 +29,8 @@ class TXTProcess():
         stringio = io.StringIO(func_str)
         for toktype, tok, start, end, line in tokenize.generate_tokens(stringio.readline):
             if toktype == tokenize.COMMENT:
-                new_lines[start[0]-1] = new_lines[start[0]-1][:start[1]] + new_lines[start[0]-1][end[1]:]
+                new_lines[start[0]-1] = new_lines[start[0] -
+                                                  1][:start[1]] + new_lines[start[0]-1][end[1]:]
         return "".join(new_lines)
 
     def remov_blank(self, func_str):
@@ -105,7 +106,8 @@ def parse(func_dict, version_id, repo_date, file_list):
 
             # func_dict字典：{“funcHash”: func_info}, 可能存在哈希碰撞
             if TLSH not in func_dict:
-                func_dict[TLSH] = func_info(func_name=func.name, version_id=version_id, func_date=repo_date)
+                func_dict[TLSH] = func_info(
+                    func_name=func.name, version_id=version_id, func_date=repo_date)
             else:
                 if func_dict[TLSH].func_name == func.name:
                     func_dict[TLSH].addversion(version_id)
@@ -124,7 +126,8 @@ def load_date(repo_name):
     if not os.path.exists(os.path.join(repo_path, "date.txt")):
         print("Invalid repository: %s" % repo_name)
     else:
-        shutil.copy(os.path.join(repo_path, "date.txt"), os.path.join(repo_date_path, "%s.txt" % repo_name))
+        shutil.copy(os.path.join(repo_path, "date.txt"),
+                    os.path.join(repo_date_path, "%s.txt" % repo_name))
         f = open(os.path.join(repo_path, "date.txt"), "r")
         f_lines = f.readlines()
         for line in f_lines:
@@ -148,26 +151,29 @@ def load_date(repo_name):
             if version is not None and version not in version_list:
                 version_num += 1
                 version_list.append(version)
-                repo_date = repo_date.replace('T', ' ').strip()
-                repo_list.append((repo_name, version, version_num, repo_date))
+                repo_date = repo_date.replace('T', ' ').strip().replace('.', '_')
+                repo_list.append((repo_name, version.replace('.', '_'), version_num, repo_date))
 
     return repo_list
 
 
 def analyze_file(repo_name):
     repo_func_path = os.path.join(args.result_path, "repo_func")
+
     # 读取所有repo
+    print("repo_name = ",repo_name)
     repo_list = load_date(repo_name)
 
     version_num = 0
     func_dict = {}
 
     # with tqdm(total=len(repo_list)) as pbar: # 显示进度条会很乱
-    for repo in repo_list:
+    for idx, repo in enumerate(repo_list):
         cur_repo_name = repo[0]
 
         version_num += 1
-        repo_path = os.path.join(args.src_path, repo[0], f'{repo[0]}_{repo[1]}')
+        repo_path = os.path.join(
+            args.src_path, repo[0], f'{repo[0]}_{repo[1]}')
         # print(repo_path)
         # repo_path = "%s\\%s\\%s_%s" % (args.src_path, repo[0], repo[0], repo[1])
         # 分析一个工程
@@ -178,11 +184,13 @@ def analyze_file(repo_name):
             # with open('abandoned.txt', 'w') as f:
             #     f.write(cur_repo_name+'\n')
         try:
-            func_dict = parse(func_dict, repo[2], repo[3], file_list)  # 分析该项目中的所有文件
+            func_dict = parse(
+                func_dict, repo[2], repo[3], file_list)  # 分析该项目中的所有文件
         except:
             # traceback.print_exc()
             pass
-
+        print("[%d/%d (%d%%)] %s_%s" % (idx+1, len(repo_list),
+              100*(idx+1)/len(repo_list), repo[0], repo[1]))
         # pbar.set_postfix(
         #     {"repo_name": repo[0], "version": repo[1], "func_num": len(func_dict)})
         # pbar.update()
@@ -190,9 +198,10 @@ def analyze_file(repo_name):
     with open(os.path.join(repo_func_path, "%s.txt" % cur_repo_name), "w") as f_func:
         # 将函数插入数据库
         for hashval, func in func_dict.items():
-            func_weight = math.log(float(version_num) / float(func.version_num))  # 以e为底数
+            func_weight = math.log(
+                float(version_num) / float(func.version_num))  # 以e为底数
             f_func.write("%s*%s*%s*%s*%s*%f\n" % (
-            cur_repo_name, func.version_ids, func.func_name, hashval, func.func_date, func_weight))
+                cur_repo_name, func.version_ids, func.func_name, hashval, func.func_date, func_weight))
 
     # print("-----------------------\nsummary:")
     # print("total function number = %d" % len(func_dict))

@@ -5,44 +5,46 @@ import zipfile
 import bz2
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-#path为repo的文件夹地址
+# path为repo的文件夹地址
+
+
 def Decompress_All(path):
     if os.path.exists(path):
         # print(path)
-        filename = {"":0}
+        filename = {"": 0}
         files = os.listdir(path)
 
         decompress_list = []
 
         for file in files:
-            if file=='date.txt':
+            if file == 'date.txt':
                 continue
-            flag=0
-            pre=""
+            flag = 0
+            pre = ""
             path_to_enter = os.path.join(path, file)
             if (file.find('.tar.gz') != -1):
-                pre=file[:-7]
-                flag=1
+                pre = file[:-7]
+                flag = 1
             elif (file.find('.tar.bz2') != -1):
-                pre=file[:-8]
-                flag=2
+                pre = file[:-8]
+                flag = 2
             elif (file.find('.zip') != -1):
-                pre=file[:-4]
-                flag=3
+                pre = file[:-4]
+                flag = 3
             elif (file.find('.tgz') != -1):
                 pre = file[:-4]
-                flag=4
+                flag = 4
             # elif not os.path.isdir(file):
                 # print(file)
                 # print("not support!") # 会对目录报错QAQ (byt)
-            if (flag != 0 ):
+            if (flag != 0):
                 if (pre in filename):
                     print("repeat!")
                 else:
-                    filename[pre]=1
+                    filename[pre] = 1
                     # Decompression_file(path_to_enter)
                     decompress_list.append(path_to_enter)
-            
+
             """删除压缩包
             """
             # delete_path = os.path.join(path, file)
@@ -51,24 +53,27 @@ def Decompress_All(path):
             #     os.remove(delete_path[:-3])
             # elif(flag==2):
             #     os.remove(delete_path[:-4])
-        
-        N_THREADS_FILE = 16
+
+        N_THREADS_FILE = 4
         file_pool = ThreadPoolExecutor(max_workers=N_THREADS_FILE)
-        
+
         file_pool.map(Decompression_file, decompress_list)
         file_pool.shutdown(True)
 
         # 将目录名中的"-"替换成"_"
         for dir in os.listdir(path):
-            if os.path.isdir(os.path.join(path, dir)) and '-' in dir:
-                dir_ = dir.replace('-', '_')
+            if os.path.isdir(os.path.join(path, dir)):
+                dir_ = dir.replace('-', '_').replace('.', '_')
                 if not os.path.exists(os.path.join(path, dir_)):
-                    os.rename(os.path.join(path, dir), os.path.join(path, dir_))
+                    os.rename(os.path.join(path, dir),
+                              os.path.join(path, dir_))
                 else:
-                    os.replace(os.path.join(path, dir_), os.path.join(path, dir))
+                    os.replace(os.path.join(path, dir_),
+                               os.path.join(path, dir))
 
     else:
-        print("this path not exists!: %s"%path)
+        print("this path not exists!: %s" % path)
+
 
 def Decompression_file(file_name):
     if(file_name.find('.gz') != -1):
@@ -99,7 +104,9 @@ def un_tgz(file_name):
     tar.extractall(os.path.splitext(file_name)[0])
     tar.close()
 
-#传入.bz2后缀的文件，在当前目录新增一个去除了.bz2后缀的文件
+# 传入.bz2后缀的文件，在当前目录新增一个去除了.bz2后缀的文件
+
+
 def un_bz2(file_name):
     zipfile = bz2.BZ2File(file_name)
     data = zipfile.read()
@@ -107,21 +114,21 @@ def un_bz2(file_name):
     open(newfile, 'wb').write(data)
 
 
-#传入.gz后缀的文件，在当前目录新增一个去除了.gz后缀的文件
+# 传入.gz后缀的文件，在当前目录新增一个去除了.gz后缀的文件
 def un_gz(file_name):
     g_file = gzip.GzipFile(file_name)
-    #获取文件的名称，去掉.gz后缀
+    # 获取文件的名称，去掉.gz后缀
     f_name = file_name.replace(".gz", "")
-    #创建gzip对象
+    # 创建gzip对象
     open(f_name, "wb+").write(g_file.read())
-    #gzip对象用read()打开后，写入open()建立的文件里。
+    # gzip对象用read()打开后，写入open()建立的文件里。
     g_file.close()
-    #关闭gzip对象
+    # 关闭gzip对象
 
 
-#传入.tar后缀的文件，在当前目录新增一个去除了.tar后缀的文件夹
+# 传入.tar后缀的文件，在当前目录新增一个去除了.tar后缀的文件夹
 def un_tar(file_name):
-    #tar后缀的文件内有多个文件，将他们的文件名存入names中
+    # tar后缀的文件内有多个文件，将他们的文件名存入names中
     tar = tarfile.open(file_name)
     f_name = file_name.replace(".tar", "")
     names = tar.getnames()
@@ -129,13 +136,13 @@ def un_tar(file_name):
         pass
     else:
         os.mkdir(f_name)
-    #因为解压后是很多文件，预先建立同名目录
+    # 因为解压后是很多文件，预先建立同名目录
     for name in names:
         tar.extract(name, f_name + "/")
     tar.close()
 
 
-#传入.zip后缀的文件，在当前目录新增一个去除了.zip后缀的文件夹
+# 传入.zip后缀的文件，在当前目录新增一个去除了.zip后缀的文件夹
 def un_zip(file_name):
     zip_file = zipfile.ZipFile(file_name)
     f_name = file_name.replace(".zip", "")
@@ -143,18 +150,18 @@ def un_zip(file_name):
         pass
     else:
         os.mkdir(f_name)
-    #因为解压后是很多文件，预先建立同名目录
+    # 因为解压后是很多文件，预先建立同名目录
     for names in zip_file.namelist():
-        zip_file.extract(names,f_name + "/")
+        zip_file.extract(names, f_name + "/")
     zip_file.close()
 
 
 def tar_main(filepath):
     if os.path.exists(filepath):
-        dirs=os.listdir(filepath)
+        dirs = os.listdir(filepath)
         dirs = [i for i in dirs if os.path.isdir(os.path.join(filepath, i))]
 
-        N_THREAD_DIR = 16
+        N_THREAD_DIR = 6
         dir_pool = ThreadPoolExecutor(max_workers=N_THREAD_DIR)
         cnt = 0
         threads = set()

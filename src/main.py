@@ -31,6 +31,7 @@ def check_dir():
     if not os.path.exists(os.path.join(cwd, args.rm_result_path)):
         os.mkdir(os.path.join(cwd, args.rm_result_path))
 
+
 def code_segmentation_multithread(DataBase, repos):
     """多线程调用Code Segmentation
 
@@ -41,7 +42,7 @@ def code_segmentation_multithread(DataBase, repos):
 
     """多线程
   """
-    N_THREADS = 8
+    N_THREADS = 40
     pool = ThreadPoolExecutor(max_workers=N_THREADS)
     pool.map(code_segmentation, [DataBase]*len(repos), repos)
     pool.shutdown(True)
@@ -63,36 +64,40 @@ def code_segmentation_multithread(DataBase, repos):
 
 
 def main_thread(settings, package):
-  # Download
-  repo_func = os.path.join(args.result_path, 'repo_func', package+'.txt')
-  repo_path = os.path.join(args.src_path, package)
-  if not os.path.exists(repo_func) or os.path.getsize(repo_func) == 0:
-    build_package_cache(settings, package)
-    # Decompress
-    Decompress_All(os.path.join(args.src_path, package))
-    # *.py -> LSH
-    analyze_file(package)
+    # Download
+    repo_func = os.path.join(args.result_path, 'repo_func', package+'.txt')
+    repo_path = os.path.join(args.src_path, package)
+    if not os.path.exists(repo_func) or os.path.getsize(repo_func) == 0:
+        build_package_cache(settings, package)
+        
+        # Decompress
+        Decompress_All(os.path.join(args.src_path, package))
+        
+        # *.py -> LSH
+        analyze_file(package)
 
-    global lock
-    lock.acquire()
-    with open('done.log', 'a') as f:
-      f.write(package+'\n')
-    lock.release()
+        # Delete repo folder
+        try:
+            shutil.rmtree(repo_path, ignore_errors=False, onerror=None)
+        except:
+            # Only in Windows!!!
+            if os.path.exists(repo_path):
+                #os.system('rmdir /q /s ' + repo_path)
+                os.system('rm -rf ' + repo_path)
+        print("Finish: %s" % package)  # 输出已经完成的
+    else:
+        # Delete repo folder
+        try:
+            shutil.rmtree(repo_path, ignore_errors=False, onerror=None)
+        except:
+            # Only in Windows!!!
+            if os.path.exists(repo_path):
+                #os.system('rmdir /q /s ' + repo_path)
+                os.system('rm -rf ' + repo_path)
+        print(f'Already finished: {package}')
+    
+    return
 
-    # Delete repo folder
-    try:
-      shutil.rmtree(repo_path, ignore_errors=False, onerror=None)
-    except:
-      # Only in Windows!!!
-      if os.path.exists(repo_path):
-        #os.system('rmdir /q /s ' + repo_path)
-        os.system('rm -rf ' + repo_path)
-
-    print(package) # 输出已经完成的
-  else:
-    print(f'Already finished: {package}')
-
-  return
 
 lock = Lock()
 
@@ -102,7 +107,7 @@ if __name__ == "__main__":
     settings, packages = parse_config(args.config)  # 解析配置文件
 
     # 为每个package创建一个线程
-    N_THREADS = 128
+    N_THREADS = 40
     pool = ThreadPoolExecutor(max_workers=N_THREADS)
     pool.map(main_thread, [settings]*len(packages), packages)
     pool.shutdown(True)
