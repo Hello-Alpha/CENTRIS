@@ -1,2 +1,7 @@
-.history/*
-collector/cache/*
+cache/
+result/
+config/
+__pycache__/
+results_rm/
+copy_summary/
+repositories/

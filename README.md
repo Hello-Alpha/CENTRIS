@@ -1,7 +1,27 @@
 # CENTRIS
 系统安全project
 
+## `main.py`主程序入口
+首先需要配置一下`run.bat`，将`--config`, `--src_path`, `result_path`改成正确的路径，然后运行`.\run.bat`就好了QwQ
 
+`main.py`负责CENTRIS整个流程：
+- 下载一个包(项目的最新版本)
+- 解压缩
+- 计算哈希
+- Code Segmentation
+- ...
+
+每个线程负责前三个任务，并在退出前，同时在标准输出和`done.log`中输出已经完成的项目名(已加锁)。运行`undone.py`可以输出没有完成的项目名。
+
+### 下划线`"_"`相关
+`config10000.txt`中列出了10001个项目名(不是正式的配置文件)，其中的`"-"`都被替换成了`"_"`，并且`cache`目录中对应的路径也被替换成了下划线，如`cache/charset_normalizer`.
+
+`date.txt`中的源代码压缩包名、压缩包名中的下划线都没有替换。`date.txt`如下：
+```
+aiobotocore-2.3.2.tar.gz 2022-05-09T06:38:52
+```
+
+----
 
 ## collector
 
@@ -15,8 +35,6 @@
 
 ==与cache同级，先新建一个date文件夹==，date.txt会被重命名成OSS名，然后统一存放到date文件夹中
 
-在collector文件夹下`./tar.sh`解压缩.
-
 ``Failed to request xxx''表示request失败，会被放进redo.log里。
 
 Invalid package''表示包不存在或请求错误，不会重试。
@@ -26,11 +44,6 @@ Invalid package''表示包不存在或请求错误，不会重试。
 不能Ctrl-C中断，只能直接关掉命令行窗口或kill(QAQ).
 
 
-
-在src目录下使用`tar.sh`对收集的pypi库文件进行重命名&解压
-
-（linux下需要先`sudo apt install unzip`）
-
 ### 配置信息
 
 repos_5000.txt	包含了top5000的项目
@@ -38,10 +51,15 @@ repos_5000.txt	包含了top5000的项目
 config_full.txt		包含了全部项目
 
 
-
 ## preprocessor
 
 ### 使用方法
+
+#### 多线程版本
+
+`.\run.bat`
+
+#### Old version
 
 修改config.py中的--src_path参数，设置为解压之后的repo的文件夹，然后将main函数中的参数设为mode = "analyze_file"，continue_flag = True，最后运行main函数即可。
 
