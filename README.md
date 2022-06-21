@@ -51,6 +51,7 @@ repos_5000.txt	包含了top5000的项目
 config_full.txt		包含了全部项目
 
 
+
 ## preprocessor
 
 ### 使用方法
@@ -135,53 +136,3 @@ func_name VARCHAR(100),	函数名
 hash_val CHAR(100),		函数哈希值
 func_date DATETIME,		函数最初出现的时间
 func_weight FLOAT		函数权重
-
-
-
-### 测试
-
-##### step1
-
-在repo_test中，0html抄了0_core_client的代码
-
-![image-20220531204339330](README.assets/image-20220531204339330.png)
-
-![image-20220531203125571](README.assets/image-20220531203125571.png)
-
-![image-20220531203346137](README.assets/image-20220531203346137.png)
-
-![image-20220531203359873](README.assets/image-20220531203359873.png)
-
-![image-20220531203414747](README.assets/image-20220531203414747.png)
-
-![image-20220531203423519](README.assets/image-20220531203423519.png)
-
-![image-20220531203433110](README.assets/image-20220531203433110.png)
-
-##### step2
-
-将continue_flag = True
-
-在repo_name=0_orchestrator时候停止
-
-然后继续运行
-
-
-
-##### step3
-
-mode = "save_file"，然后mode = "test"，设断点调试，比较记录数量
-
-![image-20220531203844477](README.assets/image-20220531203844477.png)
-
-
-
-##### step4
-
-mode = "segment"
-
-![image-20220531203947363](README.assets/image-20220531203947363.png)
-
-理论上来说列出的函数数量+后一次的函数数量=前一次的函数数量
-
-![image-20220531203955129](README.assets/image-20220531203955129.png)
