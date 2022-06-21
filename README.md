@@ -1,7 +1,23 @@
 # CENTRIS
+
 系统安全project
 
+## GitHub仓库的下载解压检测
+
+所需代码放置于github目录下
+
+运行collect.py生成一个记录着使用python语言的star数top 5000的GitHub仓库的下载链接的文本文件
+
+运行main.py根据tmp.txt下载GitHub仓库源代码的压缩包
+
+运行unzip.py将下载的GitHub仓库源代码解压
+
+
+
+运行detector.py对每个GitHub仓库计算tlsh，排序后输出代码重用检测结果
+
 ## `main.py`主程序入口
+
 首先需要配置一下`run.bat`，将`--config`, `--src_path`, `result_path`改成正确的路径，然后运行`.\run.bat`就好了QwQ
 
 `main.py`负责CENTRIS整个流程：
@@ -135,5 +151,4 @@ func_name VARCHAR(100),	函数名
 hash_val CHAR(100),		函数哈希值
 func_date DATETIME,		函数最初出现的时间
 func_weight FLOAT		函数权重
-
 
