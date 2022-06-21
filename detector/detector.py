@@ -188,7 +188,7 @@ def detector(target):
             for key, values in copied_OSS.items():
                 version_weight_dict = {}
                 f.write("-------------------------------------------------\n")
-                f.write("copy repository name: %s (%f), " % (key, float(len(copied_OSS[key]))/float(len(repo_funcs))))
+                f.write("copy repository name: %s (%f%%), " % (key, 100*float(len(copied_OSS[key]))/float(len(repo_funcs))))
                 for func in values:
                     versions = func[1].split(' ')
                     for version in versions:
@@ -219,13 +219,14 @@ print("Finished!")
 if __name__ == '__main__':
     target_list = os.listdir(repo_base)
 
-    # # 单进程
-    # detector(target_list[0])
+    # 单进程
+    for target in target_list:
+        detector(target)
 
-    # 多进程
-    MAX_PROCESS = 2
-    pool = multiprocessing.Pool(MAX_PROCESS)
-    args = [(x,) for x in target_list]
-    pool.starmap_async(detector, args)
-    pool.close()
-    pool.join()
+    # # 多进程
+    # MAX_PROCESS = 2
+    # pool = multiprocessing.Pool(MAX_PROCESS)
+    # args = [(x,) for x in target_list]
+    # pool.starmap_async(detector, args)
+    # pool.close()
+    # pool.join()
