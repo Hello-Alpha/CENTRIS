@@ -15,6 +15,8 @@
 
 map<string, vector<DBTuple>> copied_OSS;
 string repo_func_path;
+string sorted_tlsh_path;
+// std::mutex mtx;
 
 struct Args {
   float theta;
@@ -54,6 +56,20 @@ DBTuple getDBTupleFromString(string &s) {
   return make_tuple(s1, s2, s3, s4, s5, stof(s));
 }
 
+void load_database(vector<DBTuple> &DB) {
+  ifstream in;
+  in.open(sorted_tlsh_path, ios::in);
+  string item;
+  size_t cnt = 0;
+  while (getline(in, item)) {
+    printf("\r%ld", cnt);
+    DB.push_back(getDBTupleFromString(item));
+    cnt ++;
+  }
+  in.close();
+  putchar('\n');
+}
+
 void load_database(vector<DBTuple> &DB, vector<string> &repo_list) {
   int cnt = 1;
   int errcnt = 0;
@@ -79,31 +95,59 @@ void load_database(vector<DBTuple> &DB, vector<string> &repo_list) {
   printf("\n%d repos not found\n", errcnt);
 }
 
+int binary_search(vector<DBTuple> &DB, DBTuple &func) {
+  // 可能有多个函数都有相同的tlsh值,返回最小的下标
+  int left, right, mid;
+  left = 0, right = DB.size()-1;
+  while (left <= right) {
+    mid = (left + right) >> 1;
+    if (get<3>(DB[mid]) > get<3>(func)) {
+      right = mid - 1;
+    } else if (get<3>(DB[mid]) < get<3>(func)) {
+      left = mid + 1;
+    } else {
+      while (mid >= 0) {
+        if (get<3>(DB[mid]) != get<3>(func))
+          break;
+        mid--;
+      }
+      if (mid <= -1)
+        return 0;
+      return mid + 1;
+    }
+  }
+  return -1;
+}
+
 bool check_prime(vector<DBTuple> &DB, string &S_name, vector<DBTuple> &S) {
+  static size_t cnt = 0;
   bool isPrime = true;
   
   map<string, vector<DBTuple>> G;
   set<string> G_keys;
 
-  for (auto &DBtuple : DB) {
-    if (get<0>(DBtuple) == S_name) {
+  for (auto &S_func : S) {
+    // mtx.lock();
+    printf("\r%.2f%%    %64s", (float)cnt / DB.size() * 100, S_name.c_str());
+    // mtx.unlock();
+    int index = binary_search(DB, S_func);
+    if (index == -1) {
+      printf("Binary search error: %s\n", get<2>(S_func).c_str());
       continue;
     }
-    for (auto &S_func : S) {
-      size_t score = tlsh_diffxlen(get<3>(S_func), get<3>(DBtuple));
-      // cout << get<0>(S_func) << '\n';
-      if (score < args.score_thresh) {
-        if (get<4>(DBtuple) <= get<4>(S_func)) {
-          if (G_keys.find(get<0>(DBtuple)) == G_keys.end()) {
-            // DBtuple[0] not in G_keys
-            // vector<DBTuple> DBV;
-            G.insert(G.begin(), pair<string, vector<DBTuple>>(get<0>(DBtuple), vector<DBTuple>()));
-            G_keys.insert(get<0>(DBtuple));
-          }
-          G.at(get<0>(DBtuple)).push_back(S_func);
+    while (get<3>(DB[index]) == get<3>(S_func)) {
+      if (get<0>(DB[index]) != get<0>(S_func) && get<4>(DB[index]) <= get<4>(S_func)) {
+        if (G_keys.find(get<0>(DB[index])) == G_keys.end()) {
+          G.insert(G.begin(), pair<string, vector<DBTuple>>(get<0>(DB[index]), vector<DBTuple>()));
+          G_keys.insert(get<0>(DB[index]));
         }
+        G.at(get<0>(DB[index])).push_back(S_func);
       }
+      index ++;
     }
+    // mtx.lock();
+    cnt ++;
+    // mtx.unlock();
   }
 
   for (auto repo_name : G_keys) {
@@ -112,7 +156,6 @@ bool check_prime(vector<DBTuple> &DB, string &S_name, vector<DBTuple> &S) {
     float phi = float(G.at(repo_name).size()) / float(S.size());
     if (phi >= args.theta) {
       isPrime = false;
-      // copied_OSS.at(repo_name) = G.at(repo_name);
       copied_OSS.insert_or_assign(repo_name, G.at(repo_name));
     }
   }
@@ -127,14 +170,15 @@ bool tuple_ascend(DBTuple& t1, DBTuple &t2) {
 void sort_tlsh(vector<DBTuple> &DB) {
   sort(DB.begin(), DB.end(), tuple_ascend);
   ofstream o;
-  o.open("out.txt", ios::out);
-  char buf[512];
+  o.open("sorted_tlsh.txt", ios::out);
+  constexpr int bufsize = 0x800000;
+  char *buf = new char[bufsize];
   for (auto &i : DB) {
-    // o << get<0>(i) << "*" << get<1>(i) << "*" << get<2>(i) << "*" << get<3>(i) << "*" << get<4>(i) << "*" << get<5>(i) << 
-    snprintf(buf, sizeof(buf), "%s*%s*%s*%s*%s*%.2f\n", get<0>(i).c_str(), get<1>(i).c_str(), get<2>(i).c_str(), get<3>(i).c_str(), get<4>(i).c_str(), get<5>(i));
+    snprintf(buf, bufsize, "%s*%s*%s*%s*%s*%.2f\n", get<0>(i).c_str(), get<1>(i).c_str(), get<2>(i).c_str(), get<3>(i).c_str(), get<4>(i).c_str(), get<5>(i));
     o.write(buf, strlen(buf));
   }
   o.close();
+  delete[] buf;
 }
 
 void code_segmentation(vector<DBTuple> &DB, string &repo_name) {
@@ -149,10 +193,11 @@ void code_segmentation(vector<DBTuple> &DB, string &repo_name) {
     repo_funcs.push_back(getDBTupleFromString(item));
   }
   f.close();
+
   bool isPrime = check_prime(DB, repo_name, repo_funcs);
-  printf("%s", repo_name.c_str());
+
   if (!isPrime) {
-    puts("!");
+    putchar('!');
     ofstream fsummary;
     fsummary.open(args.copy_summary_path + repo_name + ".txt", ios::out);
     for (auto &i : copied_OSS) {
@@ -178,31 +223,26 @@ void code_segmentation(vector<DBTuple> &DB, string &repo_name) {
     }
     fresult.close();
   } else {
-    puts("~");
+    putchar('~');
   }
 }
 
 
 int main(int argc, char* argv[]) {
-  if (argc == 1) {
-    args.copy_summary_path = "D:\\c\\copy_summary\\";
-    args.result_path = "D:\\results\\";
+    args.copy_summary_path = "/home/syssec-py/CENTRIS_byt/c/copy_summary/";
+    args.result_path = "/home/syssec-py/results_new/";
     args.score_thresh = 30;
-    args.rm_result_path = "D:\\c\\result_rm\\";
-    args.config = ".\\config_1w-2w.txt";
-    args.src_path = "D:\\repositories\\";
-  } else {
-    args.copy_summary_path = argv[1];
-    args.result_path = argv[2];
-    args.score_thresh = atof(argv[3]);
-    args.rm_result_path = argv[4];
-    args.config = argv[5];
-    args.src_path = argv[6];
-  }
+    args.rm_result_path = "/home/syssec-py/CENTRIS_byt/c/results_rm/";
+    args.config = "./config_1w-2w.txt";
+    args.src_path = "repositories/";
+
+  sorted_tlsh_path = "/home/syssec-py/sorted_tlsh.txt";
 
   std::ios_base::sync_with_stdio(false);
 
-  repo_func_path = args.result_path + "repo_func\\";
+  repo_func_path = args.result_path + "repo_func/";
+
+  #ifdef SORT
   filesystem::path dir(repo_func_path);
   filesystem::directory_entry entry(dir);
   filesystem::directory_iterator list(dir);
@@ -210,24 +250,33 @@ int main(int argc, char* argv[]) {
   for(auto &it : list) {
     string s = it.path().string();
     s = s.substr(0, s.find_last_of("."));
-    s = s.substr(s.find_last_of("\\")+1, s.length());
+    s = s.substr(s.find_last_of("/")+1, s.length());
     repo_list.push_back(s);
   }
-  // ifstream in;
-  // in.open(args.config, ios::in);
-  // string item;
-  // while(getline(in, item)) {
-  //   repo_list.push_back(item);
-  // }
-  // in.close();
+  #endif
 
   vector<DBTuple> DB;
+  #ifdef SORT
   load_database(DB, repo_list);
-  printf("Database size: %lld\n", DB.size());
-  // for (auto &repo : repo_list) {
-  //   code_segmentation(DB, repo);
-  // }
+  #endif
+
+  #ifdef CODESEG
+  load_database(DB);
+  #endif
+
+  printf("Database size: %ld\n", DB.size());
+
+  #ifdef CODESEG
+  for (auto &repo : repo_list) {
+    code_segmentation(DB, repo);
+  }
+  #endif
+
+  #ifdef SORT
   sort_tlsh(DB);
+  #endif
+
+  puts("Voilaaaaaaaa!");
 
   return 0;
 }
