@@ -8,14 +8,15 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
 from tar import Decompress_All
 import shutil
+import multiprocessing
 
 
 def check_dir():
     cwd = os.getcwd()
 
-    # if not os.path.exists(os.path.join(cwd, args.src_path)):
-    #     print("Error: repo not found!")
-    #     exit(-1)
+    if not os.path.exists(os.path.join(cwd, args.src_path)):
+        print("Error: repo not found!")
+        exit(-1)
 
     result_base = os.path.join(cwd, args.result_path)
     if not os.path.exists(result_base):
@@ -76,25 +77,21 @@ def main_thread(settings, package):
         # *.py -> LSH
         analyze_file(package)
 
-        # Delete repo folder
-        try:
-            shutil.rmtree(repo_path, ignore_errors=False, onerror=None)
-        except:
-            # Only in Windows!!!
-            if os.path.exists(repo_path):
-                #os.system('rmdir /q /s ' + repo_path)
-                os.system('rm -rf ' + repo_path)
         print("Finish: %s" % package)  # 输出已经完成的
     else:
-        # Delete repo folder
+        print(f'Already finished: {package}')
+    
+    # Delete repo folder
+    try:
+        shutil.rmtree(repo_path, ignore_errors=False, onerror=None)
+    except:
+        # Only in Windows!!!
         try:
-            shutil.rmtree(repo_path, ignore_errors=False, onerror=None)
-        except:
-            # Only in Windows!!!
             if os.path.exists(repo_path):
                 #os.system('rmdir /q /s ' + repo_path)
                 os.system('rm -rf ' + repo_path)
-        print(f'Already finished: {package}')
+        except:
+            pass
     
     return
 
@@ -107,10 +104,19 @@ if __name__ == "__main__":
     settings, packages = parse_config(args.config)  # 解析配置文件
 
     # 为每个package创建一个线程
-    N_THREADS = 40
-    pool = ThreadPoolExecutor(max_workers=N_THREADS)
-    pool.map(main_thread, [settings]*len(packages), packages)
-    pool.shutdown(True)
+    N_THREADS = 20
+    # pool = ThreadPoolExecutor(max_workers=N_THREADS)
+    # pool.map(main_thread, [settings]*len(packages), packages)
+    # pool.shutdown(True)
+    pool = multiprocessing.Pool(N_THREADS)
+    args = []
+    for p in packages:
+        args.append((settings, p))
+    pool.starmap_async(main_thread, args)
+    pool.close()
+    pool.join()
+
+    print('Voilaaaaaaaaaaaa~')
 
     """后续的Code Segmentation先不做
     """
