@@ -1,26 +1,29 @@
-# CENTRIS
+# Notice
 
-系统安全project
+在个人电脑上运行时要小心：
+- 不能开启太多进程，需要调整代码
+- 不要一次性下载10w个PyPI包
+- 内存占用可能会达到11.8+ GB
 
-## 0. GitHub仓库的下载解压检测
+请注意：
 
-所需代码放置于github目录下
+- 运行时请修改路径。为方便，代码中多处是绝对路径。
 
-运行collect.py生成一个记录着使用python语言的star数top 5000的GitHub仓库的下载链接的文本文件
+- Python代码可能需要安装依赖包，需要手动下载(推荐使用`pip`)
 
-运行main.py根据tmp.txt下载GitHub仓库源代码的压缩包
+  py-tlsh, parso, tokenize, retry, tqdm.
 
-运行unzip.py将下载的GitHub仓库源代码解压
+# How to run
 
+## Collector
 
+首先需要配置`run.bat`，修改配置文件、临时repo路径和结果保存的路径，示例如下：
 
-运行detector.py对每个GitHub仓库计算tlsh，排序后输出代码重用检测结果
+```shell
+python src/main.py --config config.txt --src_path /home/syssec-py/demo/repositories --result_path /home/syssec-py/demo/results
+```
 
-## 1. Collector
-
-`collector_main.py`和`OSSCollector.py`实现了collector的核心功能，分别是：根据给定的PyPI库名称下载其所有版本的源代码包，主要代码参考了GitHub上的开源项目[pypi-downloader](https://github.com/astamminger/pypi_downloader)；分析目标库的代码，并对其中定义的所有版本的所有函数计算TLSH哈希值。
-
-为了指定想要下载的PyPI库，需要编写一个配置文件。由于我们需要的是源代码，配置文件格式如下：
+配置文件中保存的是PyPI包名，示例如下。其中`cache_folder`需要与`run.bat`中的`src_path`保持一致。
 
 ```toml
 [settings]
@@ -29,58 +32,68 @@
   python: py3
 
 [packages]
-  cn2an
-  jedi_language_server
-  google_cloud_talent
-  ...
+  plugin_sdk_automation
+  stoneredis
+  pyspyne
+  steadymark
 ```
 
-其中指定了下载的目标目录(`cache_folder`)、包类型(`sdist`)和Python版本。
+在工程根目录下运行`run.bat`，结果会保存在`result_path`中。
 
-为了运行collector，可以直接运行`main.py`，其中的`main_thread`函数会调用`collector_main`中定义的`build_package_cache`函数。
+```shell
+sh run.bat
+```
 
-在主函数中会开启多线程，调用`main_thread`. `main_thread`所做的工作有：
+## Preprocessor
 
-1.   检查当前包是否已下载，如果已经下载则跳过。
-2.   调用`build_package_cache`，将源代码压缩包下载到配置文件中缩写的路径，并在`results/repo_date/<repo_name>.txt`中记录每个版本与日期之间的对应关系。
-3.   调用`tar.py`中定义的`Decompress_All`，解压下载路径下所有的压缩包。
-4.   调用`OSSCollector.py`中定义的`analyze_file`，分析库代码函数并计算TLSH，保存在`results/repo_func/<repo_name>.txt`.
-5.   删除刚刚下载的压缩包和加压后的文件。
+### 修改版本ID
 
-## 2. Preprocessor
+在`preprocessor`目录下编译修改版本ID的程序，会生成`mod_date`:
 
-Preprocessor做两部分工作：找到Prime OSS和构建Detector需要的数据库。
+```shell
+make date
+```
 
-### 2.1 计算Prime OSS
+运行前需要先手动创建好与`result_path`同级的`results_new`目录，其中包含`repo_date`和`repo_func`子目录。
 
-首先对Collector部分得到的所有函数根据TLSH值进行排序，保存在`sorted_tlsh.txt`中，再对每一个OSS的每一个函数在排好序的TLSH序列中进行二分查找。如果一个OSS的每一个函数仅有自己拥有，这说明这个OSS就是Prime OSS. 否则需要将其非独有的部分删除，把剩余部分保存在`results_rm/<repo_name>.txt`中，将复用的OSS个数保存在`copy_summary/<repo_name>.txt`中。
+将`mod_date`复制到与`result_path`同级的目录下并运行。
 
-#### 运行方法
+### 排序
 
-本部分代码使用C++实现，在`//c/`目录下。
+在`preprocessor`目录下编译排序程序，生成`sort`. 编译前可能需要修改源代码中的路径。
 
-1.   初次排序.
+```shell
+make sort
+```
 
-     ```shell
-     make sort
-     ./sort
-     ```
+运行`sort`，得到`sorted_tlsh.txt`.
 
-     结果写在`sorted_tlsh.txt`中。
+### Code Segmentation
 
-2.   计算Prime OSS.
+在`preprocessor`目录下编译，生成`codeseg`.
 
-     ```shell
-     make codeseg
-     ./codeseg
-     ```
+```shell
+make codeseg
+```
 
-     结果会保存在`copy_summary/`和`results_rm/`中。
+在运行前需要手动创建好与源代码中对应路径的`results_rm`和`copy_summary`. 运行`codeseg`，结果会保存在这两个路径中。
 
-### 2.2 构建数据库
+### 构建OSS数据库
 
-需要同时参考`results_rm`和`results`，对函数重新排序，将结果保存在`db.txt`中，此时数据库中保存的函数都是对应的OSS所独有的。
+在`preprocessor`路径下运行`build_db_for_detector.py`.
 
-运行`python src/build_db_for_detector.py`，参数可以修改。
+得到`db.txt`，将其保存在某路径下备用。
 
-## 3. Detector
+## Detector
+
+在`detection`路径下，首先准备好待检测工程。或者也可以在`github.txt`中指定github链接，通过`main.py`下载、`unzip.py`解压。
+
+最后运行`detector.py`，结果保存在`detect_results`中。
+
+## Notes on Data
+
+`results`和`results.tar.gz`是下载后的结果，但是版本号有问题。
+`results_new`和`results_new.tar.gz`是改正后的数据库。
+`sorted_tlsh.txt`是对tlsh排序后的临时OSS数据库。
+`db.txt`是最终的OSS数据库。
+
